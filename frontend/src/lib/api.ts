@@ -13,7 +13,10 @@ import type {
   UploadPlansResponse,
 } from "@/lib/types";
 
-const BASE = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000";
+// Empty default: Vite dev proxies /api and /health to the backend in
+// vite.config.ts. For deployed builds, set VITE_API_BASE_URL to an
+// absolute backend URL.
+const BASE = import.meta.env.VITE_API_BASE_URL ?? "";
 
 export class ApiError extends Error {
   readonly status: number;
