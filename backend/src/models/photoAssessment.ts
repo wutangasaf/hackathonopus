@@ -11,7 +11,16 @@ const photoAssessmentSchema = new Schema(
       required: true,
       index: true,
     },
+    projectId: {
+      type: Schema.Types.ObjectId,
+      ref: "Project",
+      index: true,
+    },
     quality: { type: String, enum: PHOTO_QUALITIES, required: true },
+    discipline: {
+      type: String,
+      enum: ["ARCHITECTURE", "STRUCTURAL", "ELECTRICAL", "PLUMBING"],
+    },
     issues: [{ type: String }],
     retakeInstructions: { type: String },
     phaseFit: { type: Number },
