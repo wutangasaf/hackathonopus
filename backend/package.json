@@ -21,7 +21,6 @@
     "heic-convert": "^2.1.0",
     "mongoose": "^8.8.0",
     "pdf-to-img": "^4.2.0",
-    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz",
     "zod": "^3.23.8"
   },
   "devDependencies": {

@@ -115,6 +115,8 @@ Decision rules:
 - HOLD = real problems (BEHIND, missing docs, uncured monetary default) — pause the draw until resolved.
 - REJECT = DEVIATION_FOUND with unapproved scope that needs re-underwriting, or TECHNICAL_DEFAULT_RISK. Requires borrower + bank to renegotiate.
 
+When you quote release dollars in the narrative or reasoning, always use the net-of-retainage figure (trancheAmount × plannedReleasePct / 100), not the gross trancheAmount. Never tell an officer to release the gross when retainage is being held; it is a common error and it undermines trust.
+
 Be specific. Cite elementIds and SOV lineNumbers in your reasoning. Do not hedge.`;
 
 type AggregatedObservation = {
@@ -163,9 +165,29 @@ function buildContextPacket(args: {
   const lines: string[] = [];
   const m = args.milestone;
   lines.push(`## Active milestone`);
+  const netRelease = (m.trancheAmount * m.plannedReleasePct) / 100;
   lines.push(
-    `sequence=${m.sequence} name="${m.name}" plannedPercentOfLoan=${m.plannedPercentOfLoan} plannedCompletionDate=${m.plannedCompletionDate.toISOString().slice(0, 10)} status=${m.status}`,
+    `sequence=${m.sequence} name="${m.name}" plannedPercentOfLoan=${m.plannedPercentOfLoan}% plannedStartDate=${m.plannedStartDate.toISOString().slice(0, 10)} plannedCompletionDate=${m.plannedCompletionDate.toISOString().slice(0, 10)} status=${m.status}`,
   );
+  lines.push(
+    `trancheAmount=$${m.trancheAmount} plannedReleasePct=${m.plannedReleasePct}% => net release if approved=$${netRelease.toFixed(0)} (retainage held=$${(m.trancheAmount - netRelease).toFixed(0)})`,
+  );
+  if (m.actualReleasePct !== null && m.actualReleasePct !== undefined) {
+    lines.push(
+      `actualReleasePct=${m.actualReleasePct}% amountReleased=$${m.amountReleased} actualReleasedAt=${m.actualReleasedAt ? m.actualReleasedAt.toISOString().slice(0, 10) : "n/a"}`,
+    );
+  }
+  if (m.planDocRefs && m.planDocRefs.length > 0) {
+    lines.push(
+      `planDocRefs: ${m.planDocRefs.length} doc(s) cited — ${m.planDocRefs
+        .map((r) => {
+          const sheets = r.sheetLabels && r.sheetLabels.length > 0 ? ` sheets=[${r.sheetLabels.join(",")}]` : "";
+          const note = r.notes ? ` note="${r.notes}"` : "";
+          return `docId=${String(r.documentId)}${sheets}${note}`;
+        })
+        .join("; ")}`,
+    );
+  }
   lines.push(`## Required completion at this milestone`);
   for (const rc of m.requiredCompletion) {
     lines.push(
@@ -177,8 +199,18 @@ function buildContextPacket(args: {
     for (const d of m.requiredDocs) lines.push(`- ${d}`);
   }
 
+  const priorReleased = args.plan.milestones
+    .filter(
+      (x) => x.sequence < m.sequence && x.amountReleased && x.amountReleased > 0,
+    )
+    .reduce((a, x) => a + (x.amountReleased ?? 0), 0);
   lines.push(`## Finance rules (apply when judging drawVerdict)`);
-  lines.push(`loanAmount=${args.plan.loanAmount} totalBudget=${args.plan.totalBudget}`);
+  lines.push(
+    `loanAmount=$${args.plan.loanAmount} totalBudget=$${args.plan.totalBudget} priorAmountReleased=$${priorReleased}`,
+  );
+  lines.push(
+    `kickoffDate=${args.plan.kickoffDate ? args.plan.kickoffDate.toISOString().slice(0, 10) : "n/a"} requiredCompletionDate=${args.plan.requiredCompletionDate.toISOString().slice(0, 10)}`,
+  );
   lines.push(
     `retainagePct=${args.plan.retainagePct} retainageStepDownAt=${args.plan.retainageStepDownAt}% retainageStepDownTo=${args.plan.retainageStepDownTo}%`,
   );

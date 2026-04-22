@@ -145,13 +145,25 @@ export type RequiredCompletion = {
   minPct: number;
 };
 
+export type PlanDocRef = {
+  documentId: ObjectIdString;
+  sheetLabels?: string[];
+  notes?: string;
+};
+
 export type Milestone = {
   _id: ObjectIdString;
   sequence: number;
   name: string;
+  plannedStartDate: IsoDateString;
   plannedCompletionDate: IsoDateString;
   plannedPercentOfLoan: number;
+  trancheAmount: number;
+  plannedReleasePct: number;
+  actualReleasePct: number | null;
+  actualReleasedAt: IsoDateString | null;
   amountReleased: number;
+  planDocRefs: PlanDocRef[];
   requiredCompletion: RequiredCompletion[];
   requiredDocs: string[];
   status: MilestoneStatus;
@@ -172,6 +184,7 @@ export type FinancePlan = {
   materialDelayDays: number;
   cureDaysMonetary: number;
   cureDaysNonMonetary: number;
+  kickoffDate: IsoDateString;
   requiredCompletionDate: IsoDateString;
   sov: SovLine[];
   milestones: Milestone[];
@@ -180,6 +193,32 @@ export type FinancePlan = {
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
 };
+
+export type MilestoneInput = Omit<
+  Milestone,
+  "_id" | "amountReleased" | "actualReleasePct" | "actualReleasedAt"
+> & {
+  status?: MilestoneStatus;
+};
+
+export type CreateFinancePlanRequest = Omit<
+  FinancePlan,
+  | "_id"
+  | "projectId"
+  | "milestones"
+  | "modelVersion"
+  | "uploadedAt"
+  | "createdAt"
+  | "updatedAt"
+> & {
+  milestones: MilestoneInput[];
+};
+
+export type PatchMilestoneRequest = Partial<{
+  actualReleasePct: number;
+  amountReleased: number;
+  status: MilestoneStatus;
+}>;
 
 export type UsageMeta = {
   inputTokens: number;
@@ -207,12 +246,6 @@ export type AgentRun = {
 
 export type UploadPlansResponse = {
   documents: DocumentRecord[];
-  pendingAgents: readonly string[];
-  pipelineKickedOff: boolean;
-};
-
-export type UploadFinancePlanResponse = {
-  document: DocumentRecord;
   pendingAgents: readonly string[];
   pipelineKickedOff: boolean;
 };

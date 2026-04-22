@@ -1,14 +1,15 @@
 import type {
   AgentRun,
+  CreateFinancePlanRequest,
   Discipline,
   DocumentRecord,
   FinancePlan,
   Milestone,
+  PatchMilestoneRequest,
   PlanClassification,
   PlanFormat,
   PlanFormatList,
   Project,
-  UploadFinancePlanResponse,
   UploadPhotosResponse,
   UploadPlansResponse,
 } from "@/lib/types";
@@ -75,10 +76,27 @@ export const api = {
   getPlanFormatFor: (id: string, d: Discipline) =>
     json<PlanFormat>(`/api/projects/${id}/plan-format?discipline=${d}`),
 
-  uploadFinancePlan: (id: string, file: File) =>
-    upload<UploadFinancePlanResponse>(
-      `/api/projects/${id}/finance-plan`,
-      [file],
+  createFinancePlan: (id: string, body: CreateFinancePlanRequest) =>
+    json<FinancePlan>(`/api/projects/${id}/finance-plan`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  updateFinancePlan: (id: string, body: CreateFinancePlanRequest) =>
+    json<FinancePlan>(`/api/projects/${id}/finance-plan`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    }),
+  patchMilestone: (
+    id: string,
+    milestoneId: string,
+    patch: PatchMilestoneRequest,
+  ) =>
+    json<Milestone>(
+      `/api/projects/${id}/finance-plan/milestones/${milestoneId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      },
     ),
   getFinancePlan: (id: string) =>
     json<FinancePlan>(`/api/projects/${id}/finance-plan`),

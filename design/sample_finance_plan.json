@@ -1,0 +1,163 @@
+{
+  "loanType": "residential",
+  "loanAmount": 850000,
+  "totalBudget": 1050000,
+  "currency": "USD",
+  "retainagePct": 10,
+  "retainageStepDownAt": 50,
+  "retainageStepDownTo": 5,
+  "coThresholdSingle": 50000,
+  "coThresholdCumulativePct": 5,
+  "materialDelayDays": 60,
+  "cureDaysMonetary": 10,
+  "cureDaysNonMonetary": 30,
+  "kickoffDate": "2026-04-20",
+  "requiredCompletionDate": "2027-04-20",
+  "sov": [
+    { "lineNumber": "001", "description": "Site prep & staking", "csiCode": "02 41 00", "scheduledValue": 25000, "disciplineHint": "ARCHITECTURE", "zoneHint": "site-wide" },
+    { "lineNumber": "002", "description": "Underslab plumbing rough-in", "csiCode": "22 10 00", "scheduledValue": 38000, "disciplineHint": "PLUMBING", "zoneHint": "foundation" },
+    { "lineNumber": "003", "description": "Foundation trench + concrete", "csiCode": "03 30 00", "scheduledValue": 140000, "disciplineHint": "STRUCTURAL", "zoneHint": "foundation" },
+    { "lineNumber": "004", "description": "Framing", "csiCode": "06 10 00", "scheduledValue": 160000, "disciplineHint": "STRUCTURAL", "zoneHint": "shell" },
+    { "lineNumber": "005", "description": "Roof + envelope", "csiCode": "07 00 00", "scheduledValue": 115000, "disciplineHint": "ARCHITECTURE", "zoneHint": "shell" },
+    { "lineNumber": "006", "description": "Rough plumbing (above-slab)", "csiCode": "22 11 00", "scheduledValue": 48000, "disciplineHint": "PLUMBING", "zoneHint": "interior" },
+    { "lineNumber": "007", "description": "Rough electrical", "csiCode": "26 05 00", "scheduledValue": 55000, "disciplineHint": "ELECTRICAL", "zoneHint": "interior" },
+    { "lineNumber": "008", "description": "Insulation + air sealing", "csiCode": "07 21 00", "scheduledValue": 42000, "disciplineHint": "ARCHITECTURE", "zoneHint": "interior" },
+    { "lineNumber": "009", "description": "Drywall + interior finishes", "csiCode": "09 00 00", "scheduledValue": 90000, "disciplineHint": "ARCHITECTURE", "zoneHint": "interior" },
+    { "lineNumber": "010", "description": "Plumbing fixtures + trim", "csiCode": "22 40 00", "scheduledValue": 58000, "disciplineHint": "PLUMBING", "zoneHint": "interior" },
+    { "lineNumber": "011", "description": "Electrical fixtures + trim", "csiCode": "26 50 00", "scheduledValue": 34000, "disciplineHint": "ELECTRICAL", "zoneHint": "interior" },
+    { "lineNumber": "012", "description": "Cabinets + countertops", "csiCode": "06 40 00", "scheduledValue": 68000, "disciplineHint": "ARCHITECTURE", "zoneHint": "interior" },
+    { "lineNumber": "013", "description": "Builder's GC / overhead", "csiCode": "", "scheduledValue": 110000, "disciplineHint": "ARCHITECTURE", "zoneHint": "site-wide" },
+    { "lineNumber": "014", "description": "Contingency", "csiCode": "", "scheduledValue": 67000, "disciplineHint": "ARCHITECTURE", "zoneHint": "site-wide" }
+  ],
+  "milestones": [
+    {
+      "sequence": 1,
+      "name": "Plumbing rough layout approval (pre-trench)",
+      "plannedStartDate": "2026-04-20",
+      "plannedCompletionDate": "2026-05-10",
+      "plannedPercentOfLoan": 5,
+      "trancheAmount": 42500,
+      "plannedReleasePct": 90,
+      "planDocRefs": [{ "documentId": "PLAN_DOC_PLACEHOLDER", "notes": "bathroom plumbing layout, both baths" }],
+      "requiredCompletion": [
+        { "discipline": "PLUMBING", "elementKindOrId": "water_closet", "minPct": 0 },
+        { "discipline": "PLUMBING", "elementKindOrId": "corner_shower", "minPct": 0 },
+        { "discipline": "PLUMBING", "elementKindOrId": "floor_drain", "minPct": 0 },
+        { "discipline": "PLUMBING", "elementKindOrId": "countertop_lavatory", "minPct": 0 }
+      ],
+      "requiredDocs": ["stamped plumbing layout", "plumbing layout RFIs closed"],
+      "status": "pending"
+    },
+    {
+      "sequence": 2,
+      "name": "Foundation trench + underslab plumbing",
+      "plannedStartDate": "2026-05-10",
+      "plannedCompletionDate": "2026-06-15",
+      "plannedPercentOfLoan": 15,
+      "trancheAmount": 85000,
+      "plannedReleasePct": 90,
+      "planDocRefs": [{ "documentId": "PLAN_DOC_PLACEHOLDER" }],
+      "requiredCompletion": [
+        { "discipline": "STRUCTURAL", "elementKindOrId": "foundation", "minPct": 100 },
+        { "discipline": "PLUMBING", "elementKindOrId": "underslab_plumbing", "minPct": 100 }
+      ],
+      "requiredDocs": ["building-dept foundation inspection", "pressure test record"],
+      "status": "pending"
+    },
+    {
+      "sequence": 3,
+      "name": "Slab + rough framing",
+      "plannedStartDate": "2026-06-15",
+      "plannedCompletionDate": "2026-08-15",
+      "plannedPercentOfLoan": 30,
+      "trancheAmount": 127500,
+      "plannedReleasePct": 90,
+      "planDocRefs": [],
+      "requiredCompletion": [
+        { "discipline": "STRUCTURAL", "elementKindOrId": "rough_framing", "minPct": 100 }
+      ],
+      "requiredDocs": ["framing inspection sign-off"],
+      "status": "pending"
+    },
+    {
+      "sequence": 4,
+      "name": "Dried-in + envelope",
+      "plannedStartDate": "2026-08-15",
+      "plannedCompletionDate": "2026-10-15",
+      "plannedPercentOfLoan": 55,
+      "trancheAmount": 212500,
+      "plannedReleasePct": 90,
+      "planDocRefs": [],
+      "requiredCompletion": [
+        { "discipline": "ARCHITECTURE", "elementKindOrId": "roof_sheathing", "minPct": 100 },
+        { "discipline": "ARCHITECTURE", "elementKindOrId": "windows", "minPct": 90 }
+      ],
+      "requiredDocs": ["window schedule w/ installer invoice"],
+      "status": "pending"
+    },
+    {
+      "sequence": 5,
+      "name": "Rough MEP inspections passed",
+      "plannedStartDate": "2026-10-15",
+      "plannedCompletionDate": "2026-12-15",
+      "plannedPercentOfLoan": 70,
+      "trancheAmount": 127500,
+      "plannedReleasePct": 95,
+      "planDocRefs": [],
+      "requiredCompletion": [
+        { "discipline": "PLUMBING", "elementKindOrId": "rough_plumbing", "minPct": 100 },
+        { "discipline": "ELECTRICAL", "elementKindOrId": "rough_electrical", "minPct": 100 }
+      ],
+      "requiredDocs": ["plumbing rough inspection record", "electrical rough inspection record"],
+      "status": "pending"
+    },
+    {
+      "sequence": 6,
+      "name": "Drywall + insulation",
+      "plannedStartDate": "2026-12-15",
+      "plannedCompletionDate": "2027-01-31",
+      "plannedPercentOfLoan": 82,
+      "trancheAmount": 102000,
+      "plannedReleasePct": 95,
+      "planDocRefs": [],
+      "requiredCompletion": [
+        { "discipline": "ARCHITECTURE", "elementKindOrId": "insulation_air_sealing", "minPct": 100 },
+        { "discipline": "ARCHITECTURE", "elementKindOrId": "drywall", "minPct": 95 }
+      ],
+      "requiredDocs": ["blower-door test"],
+      "status": "pending"
+    },
+    {
+      "sequence": 7,
+      "name": "Fixtures + finishes",
+      "plannedStartDate": "2027-01-31",
+      "plannedCompletionDate": "2027-03-15",
+      "plannedPercentOfLoan": 95,
+      "trancheAmount": 110500,
+      "plannedReleasePct": 95,
+      "planDocRefs": [{ "documentId": "PLAN_DOC_PLACEHOLDER" }],
+      "requiredCompletion": [
+        { "discipline": "PLUMBING", "elementKindOrId": "water_closet", "minPct": 100 },
+        { "discipline": "PLUMBING", "elementKindOrId": "corner_shower", "minPct": 100 },
+        { "discipline": "ELECTRICAL", "elementKindOrId": "electrical_trim", "minPct": 100 }
+      ],
+      "requiredDocs": ["executed plumbing lien waiver", "executed electrical lien waiver"],
+      "status": "pending"
+    },
+    {
+      "sequence": 8,
+      "name": "Certificate of occupancy + retainage release",
+      "plannedStartDate": "2027-03-15",
+      "plannedCompletionDate": "2027-04-20",
+      "plannedPercentOfLoan": 100,
+      "trancheAmount": 42500,
+      "plannedReleasePct": 100,
+      "planDocRefs": [],
+      "requiredCompletion": [
+        { "discipline": "ARCHITECTURE", "elementKindOrId": "final_finish", "minPct": 100 }
+      ],
+      "requiredDocs": ["certificate of occupancy"],
+      "status": "pending"
+    }
+  ]
+}

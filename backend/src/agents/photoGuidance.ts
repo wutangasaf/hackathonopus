@@ -74,6 +74,17 @@ function buildUserContent(
     lines.push(`## Required docs at draw time (for context only, not shot targets):`);
     for (const d of milestone.requiredDocs) lines.push(`- ${d}`);
   }
+  if (milestone.planDocRefs && milestone.planDocRefs.length > 0) {
+    lines.push(`## Plan documents this tranche is drawing against (cite sheet labels in shot targets when helpful):`);
+    for (const ref of milestone.planDocRefs) {
+      const sheets =
+        ref.sheetLabels && ref.sheetLabels.length > 0
+          ? ` sheets=[${ref.sheetLabels.join(",")}]`
+          : "";
+      const note = ref.notes ? ` note="${ref.notes}"` : "";
+      lines.push(`- documentId=${String(ref.documentId)}${sheets}${note}`);
+    }
+  }
   lines.push(`## PlanFormat elements by discipline`);
   for (const pf of planFormats) {
     lines.push(`### ${pf.discipline} (${pf.elements.length} elements)`);

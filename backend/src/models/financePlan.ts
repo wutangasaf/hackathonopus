@@ -49,13 +49,32 @@ const requiredCompletionSchema = new Schema(
   { _id: false },
 );
 
+const planDocRefSchema = new Schema(
+  {
+    documentId: {
+      type: Schema.Types.ObjectId,
+      ref: "Document",
+      required: true,
+    },
+    sheetLabels: [{ type: String }],
+    notes: { type: String },
+  },
+  { _id: false },
+);
+
 const milestoneSchema = new Schema(
   {
     sequence: { type: Number, required: true },
     name: { type: String, required: true },
+    plannedStartDate: { type: Date, required: true },
     plannedCompletionDate: { type: Date, required: true },
     plannedPercentOfLoan: { type: Number, required: true },
+    trancheAmount: { type: Number, required: true },
+    plannedReleasePct: { type: Number, required: true },
+    actualReleasePct: { type: Number, default: null },
+    actualReleasedAt: { type: Date, default: null },
     amountReleased: { type: Number, default: 0 },
+    planDocRefs: { type: [planDocRefSchema], default: [] },
     requiredCompletion: { type: [requiredCompletionSchema], default: [] },
     requiredDocs: [{ type: String }],
     status: {
@@ -88,6 +107,7 @@ const financePlanSchema = new Schema(
     materialDelayDays: { type: Number, default: 60 },
     cureDaysMonetary: { type: Number, default: 10 },
     cureDaysNonMonetary: { type: Number, default: 30 },
+    kickoffDate: { type: Date, required: true },
     requiredCompletionDate: { type: Date, required: true },
     sov: { type: [sovLineSchema], default: [] },
     milestones: { type: [milestoneSchema], default: [] },
