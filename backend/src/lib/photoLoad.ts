@@ -14,7 +14,7 @@ const SUPPORTED_MEDIA_TYPES = new Set([
   "image/webp",
 ]);
 
-function isHeic(mimeType: string, filename: string): boolean {
+function isHeicByHint(mimeType: string, filename: string): boolean {
   const lower = filename.toLowerCase();
   return (
     mimeType === "image/heic" ||
@@ -24,13 +24,30 @@ function isHeic(mimeType: string, filename: string): boolean {
   );
 }
 
+const HEIC_BRANDS = new Set([
+  "heic",
+  "heix",
+  "hevc",
+  "hevx",
+  "mif1",
+  "msf1",
+  "heif",
+]);
+
+function isHeicByMagic(buf: Buffer): boolean {
+  if (buf.length < 12) return false;
+  if (buf.slice(4, 8).toString("ascii") !== "ftyp") return false;
+  const brand = buf.slice(8, 12).toString("ascii");
+  return HEIC_BRANDS.has(brand);
+}
+
 export async function loadVisionImage(
   path: string,
   mimeType: string,
   filename: string,
 ): Promise<VisionImage> {
   const raw = await readFile(path);
-  if (isHeic(mimeType, filename)) {
+  if (isHeicByHint(mimeType, filename) || isHeicByMagic(raw)) {
     const jpegBuf = (await heicConvert({
       buffer: raw,
       format: "JPEG",
