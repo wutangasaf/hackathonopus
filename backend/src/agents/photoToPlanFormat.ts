@@ -1,10 +1,10 @@
-import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import type { Types } from "mongoose";
 import {
   DocumentModel,
   type DocumentDoc,
 } from "../models/document.js";
+import { loadVisionImage } from "../lib/photoLoad.js";
 import {
   PlanFormat,
   type PlanFormatDoc,
@@ -86,10 +86,11 @@ export async function runPhotoToPlanFormat(
         return `- elementId="${el.elementId}" kind=${el.kind} identifier="${el.identifier}"${loc}`;
       });
 
-      const imageBytes = await readFile(photoDoc.storagePath);
-      const mediaType = (
-        photoDoc.mimeType.startsWith("image/") ? photoDoc.mimeType : "image/jpeg"
-      ) as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+      const image = await loadVisionImage(
+        photoDoc.storagePath,
+        photoDoc.mimeType,
+        photoDoc.originalFilename,
+      );
 
       const contextText = [
         `Photo: ${photoDoc.originalFilename}.`,
@@ -106,8 +107,8 @@ export async function runPhotoToPlanFormat(
               type: "image",
               source: {
                 type: "base64",
-                media_type: mediaType,
-                data: imageBytes.toString("base64"),
+                media_type: image.mediaType,
+                data: image.buffer.toString("base64"),
               },
             },
           ],

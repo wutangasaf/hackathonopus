@@ -1,10 +1,10 @@
-import { readFile } from "node:fs/promises";
 import { z } from "zod";
 import type { Types } from "mongoose";
 import {
   DocumentModel,
   type DocumentDoc,
 } from "../models/document.js";
+import { loadVisionImage } from "../lib/photoLoad.js";
 import {
   PhotoAssessment,
   PHOTO_QUALITIES,
@@ -80,7 +80,11 @@ export async function runPhotoQuality(
         }
       }
 
-      const imageBytes = await readFile(photoDoc.storagePath);
+      const image = await loadVisionImage(
+        photoDoc.storagePath,
+        photoDoc.mimeType,
+        photoDoc.originalFilename,
+      );
       const contextLines: string[] = [];
       contextLines.push(
         `Photo: ${photoDoc.originalFilename} (mimeType=${photoDoc.mimeType}).`,
@@ -100,10 +104,6 @@ export async function runPhotoQuality(
         );
       }
 
-      const mediaType = (
-        photoDoc.mimeType.startsWith("image/") ? photoDoc.mimeType : "image/jpeg"
-      ) as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
-
       const messages: ClaudeMessage[] = [
         {
           role: "user",
@@ -113,8 +113,8 @@ export async function runPhotoQuality(
               type: "image",
               source: {
                 type: "base64",
-                media_type: mediaType,
-                data: imageBytes.toString("base64"),
+                media_type: image.mediaType,
+                data: image.buffer.toString("base64"),
               },
             },
           ],
