@@ -3,6 +3,7 @@ import multipart from "@fastify/multipart";
 import { mkdir } from "node:fs/promises";
 import { config } from "./config.js";
 import { connectDb } from "./db.js";
+import { registerRoutes } from "./routes/index.js";
 
 export async function buildServer() {
   const app = Fastify({
@@ -18,6 +19,8 @@ export async function buildServer() {
   });
 
   app.get("/health", async () => ({ ok: true }));
+
+  await app.register(registerRoutes);
 
   return app;
 }
