@@ -19,7 +19,7 @@ export default {
         "fg-muted": "var(--fg-muted)",
         line: "var(--line)",
         "line-strong": "var(--line-strong)",
-        accent: "var(--accent)",
+        brand: "var(--accent)",
         success: "var(--success)",
         warn: "var(--warn)",
         danger: "var(--danger)",
@@ -39,6 +39,10 @@ export default {
         muted: {
           DEFAULT: "var(--bg-1)",
           foreground: "var(--fg-dim)",
+        },
+        accent: {
+          DEFAULT: "var(--bg-2)",
+          foreground: "var(--fg)",
         },
         destructive: {
           DEFAULT: "var(--danger)",
