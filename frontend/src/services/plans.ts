@@ -136,6 +136,31 @@ export function useUploadPlans(
   });
 }
 
+export type DeletePlanInput = { docId: string };
+
+/**
+ * Delete a plan PDF. Backend removes the file, scrubs classification
+ * entries, and cancels any running Agent 1/2 runs that referenced it.
+ * Returns 409 if the doc is pinned in a milestone's planDocRefs —
+ * caller must update the finance plan first. Invalidates plans subtree
+ * (list + classification + formats) and runs.
+ */
+export function useDeletePlan(
+  projectId: string,
+  options?: UseMutationOptions<void, ApiError, DeletePlanInput>,
+) {
+  const qc = useQueryClient();
+  return useMutation<void, ApiError, DeletePlanInput>({
+    mutationFn: ({ docId }) => api.deletePlan(projectId, docId),
+    ...options,
+    onSuccess: (data, vars, ctx, meta) => {
+      qc.invalidateQueries({ queryKey: queryKeys.plans.all(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.runs.all(projectId) });
+      options?.onSuccess?.(data, vars, ctx, meta);
+    },
+  });
+}
+
 function isNotFound(err: unknown): boolean {
   return (
     typeof err === "object" &&

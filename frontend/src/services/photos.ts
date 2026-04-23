@@ -112,6 +112,29 @@ export function useUploadPhotos(
   });
 }
 
+export type DeletePhotoInput = { photoId: string };
+
+/**
+ * Delete a photo. Backend removes the file, cascades PhotoAssessment +
+ * Observation rows, and cancels any running Agent 5/6 runs on this
+ * photo. Invalidates photos subtree (list + detail + guidance) and runs.
+ */
+export function useDeletePhoto(
+  projectId: string,
+  options?: UseMutationOptions<void, ApiError, DeletePhotoInput>,
+) {
+  const qc = useQueryClient();
+  return useMutation<void, ApiError, DeletePhotoInput>({
+    mutationFn: ({ photoId }) => api.deletePhoto(projectId, photoId),
+    ...options,
+    onSuccess: (data, vars, ctx, meta) => {
+      qc.invalidateQueries({ queryKey: queryKeys.photos.all(projectId) });
+      qc.invalidateQueries({ queryKey: queryKeys.runs.all(projectId) });
+      options?.onSuccess?.(data, vars, ctx, meta);
+    },
+  });
+}
+
 function isNotFound(err: unknown): boolean {
   return (
     typeof err === "object" &&

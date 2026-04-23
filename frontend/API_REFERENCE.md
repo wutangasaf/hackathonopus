@@ -64,6 +64,17 @@ type AgentRunStatus = "running" | "succeeded" | "failed";
 ### `GET /api/projects/:id/plans`
 - **200** → `Document[]` where `kind === "PLAN"`, newest first.
 
+### `DELETE /api/projects/:id/plans/:docId`
+- **Purpose**: hard-delete a plan document — removes the `Document` row, the file on disk, scrubs matching entries from the latest `PlanClassification.sheets[]`, and marks any running `PlanClassifier` / `PlanFormatExtractor` run on the project as `failed` with `error: "document deleted: processing cancelled"`.
+- **Blocked by finance plan**: if the doc is referenced by any milestone's `planDocRefs[].documentId`, returns **409** with `{ error: "referenced by milestone \"...\": edit the finance plan first" }`. Edit the finance plan to drop the reference, then retry.
+- **204** (no body) on success.
+- **400** → invalid `docId` or `id`.
+- **404** → doc not found (or belongs to another project, or isn't a plan).
+- **Side effects to anticipate on the frontend**:
+  - `GET /plan-classification` will return a filtered list (or 404 if this was the last plan doc).
+  - `GET /plan-format` stays unchanged — stale extraction left in place; re-upload + re-run to refresh.
+  - `GET /runs` may show a just-cancelled `failed` row.
+
 ### `GET /api/projects/:id/plan-classification`
 - **Purpose**: Agent 1 output. Per-page classification — feeds the Gantt doc-chip palette.
 - **200** → `PlanClassification` with `sheets: [{ documentId, pageNumber, discipline, sheetRole, titleblock, notes? }]`.
@@ -214,12 +225,13 @@ First call ~30–60s; cached calls <200ms. Needs a spinner.
 
 ### `POST /api/projects/:id/photos`
 - **Purpose**: upload site photo(s). Each new photo kicks off Agent 5 (PhotoQuality) → if GOOD with discipline, Agent 6 (PhotoToPlanFormat) fire-and-forget.
-- **Body**: `multipart/form-data` with `file` parts. HEIC/HEIF auto-decoded to JPEG.
+- **Body**: `multipart/form-data` with `file` parts. HEIC/HEIF auto-decoded to JPEG for vision calls; the original bytes are still preserved.
+- **Side effect on upload**: the server extracts EXIF from every photo and populates `document.exifMeta` (see shape below). Cost is negligible. No client action required.
 - **201** → `{ documents: Document[], pendingAgents: ["PhotoQuality","PhotoToPlanFormat"], pipelineKickedOffFor: string[] }`.
 - **400** → no file parts.
 
 ### `GET /api/projects/:id/photos`
-- **200** → `Document[]` where `kind === "PHOTO"`, newest first.
+- **200** → `Document[]` where `kind === "PHOTO"`, newest first. Each document carries `exifMeta` (may be `{ present: false }`).
 
 ### `GET /api/projects/:id/photos/:photoId`
 - **Purpose**: single photo plus its analysis. Render this on a photo detail page.
@@ -228,6 +240,54 @@ First call ~30–60s; cached calls <200ms. Needs a spinner.
   - `observation`: `matchedElements: [{ elementId, observedState, observedPct?, confidence, evidence }]`, `unexpectedObservations: string[]`, `safetyFlags: string[]`.
   - `observation` is `null` when Agent 5 returned `NEEDS_RETAKE` or no discipline (Agent 6 correctly skipped).
 - **404** → photo not found.
+
+### `DELETE /api/projects/:id/photos/:photoId`
+- **Purpose**: hard-delete a photo — removes the `Document` row, the file on disk, any `PhotoAssessment` / `Observation` rows for the photo, and marks any running `PhotoQuality` / `PhotoToPlanFormat` run whose `input.photoDocumentId` matches as `failed` with `error: "document deleted: processing cancelled"`.
+- **204** (no body) on success.
+- **400** → invalid id.
+- **404** → photo not found.
+- **Side effects to anticipate on the frontend**:
+  - `GET /photos` will no longer list the photo.
+  - `GET /photos/:photoId` will 404.
+  - `GET /photos/:photoId/raw` will 404.
+  - Any draw report generated *after* the deletion won't cite this photo.
+
+### `GET /api/projects/:id/photos/:photoId/raw`
+- **Purpose**: stream the actual photo bytes. Use for `<img src>` in thumbnails, detail views, and report panels.
+- **Response**: 200 with `content-type: <document.mimeType>` (JPEG/PNG served as-is). **HEIC/HEIF is transparently re-encoded to JPEG on the fly**, so browsers that don't support HEIC (Chrome/Firefox) still render. `cache-control: private, max-age=300`.
+- **404** → photo not found.
+- **410** → photo row exists but the bytes are no longer on disk.
+- **500** → read / decode error (logged on the server).
+- **No auth** — same posture as the rest of the API for the hackathon.
+
+### Photo `exifMeta` shape
+
+Populated on upload for `kind === "PHOTO"`. Plan/finance docs have `exifMeta: undefined`.
+
+```ts
+type ExifMeta = {
+  present: boolean;                      // false = no EXIF block (stripped JPEG, screenshot, unsupported format)
+  capturedAt?: string;                   // ISO 8601 from DateTimeOriginal / CreateDate / ModifyDate
+  gps?: {
+    lat: number;                         // decimal degrees
+    lon: number;
+    altitude?: number;                   // meters, when present
+  };
+  camera?: { make?: string; model?: string };
+  orientation?: number;                  // 1..8, EXIF orientation tag
+  error?: string;                        // only set when the parser threw (corrupt file, etc.)
+};
+```
+
+Examples:
+- **iPhone original (HEIC or JPEG)** → `{ present: true, capturedAt: "2026-04-23T14:12:07Z", gps: { lat: 32.0853, lon: 34.7818 }, camera: { make: "Apple", model: "iPhone 15 Pro" }, orientation: 6 }`
+- **WhatsApp-stripped or a screenshot** → `{ present: false }`
+- **Corrupt file** → `{ present: false, error: "..." }`
+
+**Render rules for the frontend:**
+- Show "Captured {capturedAt}" and a small map pin for `gps` **only when `exifMeta.present === true`**.
+- Otherwise surface a dim "NO EXIF ON RECORD" line — don't hide it silently, since the absence is part of the draw-verification story.
+- If you need a small distance-to-project badge, compute it client-side against the project address (geocode once per project, cache in localStorage).
 
 ---
 
@@ -289,7 +349,7 @@ type Document = {
   mimeType: string;
   sha256: string;          // 64-hex FRE 901 hash
   serverReceivedAt: IsoDateString;
-  exifMeta?: Record<string, unknown>;
+  exifMeta?: ExifMeta;    // populated for kind === "PHOTO"; see Photos section
   uploaderRef?: string;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;

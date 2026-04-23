@@ -45,6 +45,12 @@ async function json<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
+async function noContent(path: string, init?: RequestInit): Promise<void> {
+  const res = await fetch(`${BASE}${path}`, init);
+  if (res.status === 204) return;
+  if (!res.ok) throw new ApiError(res.status, await res.text());
+}
+
 async function upload<T>(
   path: string,
   files: File[],
@@ -85,6 +91,8 @@ export const api = {
     json<DocumentRecord[]>(`/api/projects/${id}/plans`),
   uploadPlans: (id: string, files: File[]) =>
     upload<UploadPlansResponse>(`/api/projects/${id}/plans`, files),
+  deletePlan: (id: string, docId: string) =>
+    noContent(`/api/projects/${id}/plans/${docId}`, { method: "DELETE" }),
   getPlanClassification: (id: string) =>
     json<PlanClassification>(`/api/projects/${id}/plan-classification`),
   getPlanFormats: (id: string) =>
@@ -141,6 +149,8 @@ export const api = {
     json<PhotoDetailResponse>(
       `/api/projects/${projectId}/photos/${photoId}`,
     ),
+  deletePhoto: (id: string, photoId: string) =>
+    noContent(`/api/projects/${id}/photos/${photoId}`, { method: "DELETE" }),
 
   // Draw reports (Agent 7)
   createReport: (id: string, opts: { milestoneId?: string } = {}) =>

@@ -1,3 +1,4 @@
+import { Trash2 } from "lucide-react";
 import { useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
@@ -10,6 +11,7 @@ import { PhotoGuidance } from "@/components/uploads/PhotoGuidance";
 import { PhotosDropzone } from "@/components/uploads/PhotosDropzone";
 import { PipelineProgress } from "@/components/uploads/PipelineProgress";
 import { PlansDropzone } from "@/components/uploads/PlansDropzone";
+import { ApiError } from "@/lib/api";
 import { relativeTime } from "@/lib/time";
 import {
   photoRawUrl,
@@ -25,8 +27,12 @@ import {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useFinancePlan, useCurrentMilestone } from "@/services/financePlan";
-import { usePhotos } from "@/services/photos";
-import { usePlanClassification, usePlans } from "@/services/plans";
+import { useDeletePhoto, usePhotos } from "@/services/photos";
+import {
+  useDeletePlan,
+  usePlanClassification,
+  usePlans,
+} from "@/services/plans";
 import { useProject } from "@/services/projects";
 import { useCreateReport, useReports } from "@/services/reports";
 import { useLatestRunByAgent } from "@/services/runs";
@@ -357,7 +363,7 @@ function PlansTab({ projectId }: { projectId: string }) {
         ) : !plans.data || plans.data.length === 0 ? (
           <EmptyRow>NO PLANS UPLOADED · DROP PDFS ABOVE TO BEGIN</EmptyRow>
         ) : (
-          <DocumentList docs={plans.data} />
+          <DocumentList projectId={projectId} docs={plans.data} />
         )}
       </section>
 
@@ -703,11 +709,42 @@ function PhotoGrid({
   projectId: string;
   docs: DocumentRecord[];
 }) {
+  const [error, setError] = useState<string | null>(null);
+  const del = useDeletePhoto(projectId, {
+    onSuccess: () => setError(null),
+    onError: (err) => setError(`${err.status} · ${err.body.slice(0, 160)}`),
+  });
+
+  async function onDelete(doc: DocumentRecord) {
+    if (del.isPending) return;
+    if (
+      !window.confirm(
+        `Delete "${doc.originalFilename}"? This also removes its quality check, observation, and any in-flight analysis.`,
+      )
+    )
+      return;
+    setError(null);
+    del.mutate({ photoId: doc._id });
+  }
+
   return (
-    <div className="grid grid-cols-2 gap-[2px] bg-[var(--line)] md:grid-cols-3 lg:grid-cols-4">
-      {docs.map((d) => (
-        <PhotoTile key={d._id} projectId={projectId} doc={d} />
-      ))}
+    <div className="space-y-3">
+      {error && (
+        <div className="border-l-2 border-danger bg-bg-1 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-danger">
+          Error · {error}
+        </div>
+      )}
+      <div className="grid grid-cols-2 gap-[2px] bg-[var(--line)] md:grid-cols-3 lg:grid-cols-4">
+        {docs.map((d) => (
+          <PhotoTile
+            key={d._id}
+            projectId={projectId}
+            doc={d}
+            onDelete={() => onDelete(d)}
+            isDeleting={del.isPending && del.variables?.photoId === d._id}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -715,52 +752,81 @@ function PhotoGrid({
 function PhotoTile({
   projectId,
   doc,
+  onDelete,
+  isDeleting,
 }: {
   projectId: string;
   doc: DocumentRecord;
+  onDelete: () => void;
+  isDeleting: boolean;
 }) {
   const hasGeo = Boolean(doc.exifMeta?.present && doc.exifMeta.gps);
   const exifRecorded = doc.exifMeta?.present === true;
   const exifMissing = doc.exifMeta?.present === false;
 
   return (
-    <Link
-      to={`/projects/${projectId}/photos/${doc._id}`}
-      className="group relative block aspect-[4/3] overflow-hidden bg-bg-2 transition-opacity"
+    <div
+      className={cn(
+        "group relative block aspect-[4/3] overflow-hidden bg-bg-2",
+        isDeleting && "opacity-50",
+      )}
     >
-      <img
-        src={photoRawUrl(projectId, doc._id)}
-        alt={doc.originalFilename}
-        loading="lazy"
-        className="absolute inset-0 h-full w-full object-cover transition-opacity group-hover:opacity-80"
-      />
-      <div
-        aria-hidden
-        className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.78)] via-transparent to-transparent"
-      />
-      <div className="absolute left-3 right-3 top-3 flex items-start justify-between">
-        <div className="flex gap-1">
-          {hasGeo && (
-            <span className="border border-success/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
-              Geo ✓
-            </span>
-          )}
-          {exifRecorded && !hasGeo && (
-            <span className="border border-line-strong bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-fg-dim">
-              Exif
-            </span>
-          )}
-          {exifMissing && (
-            <span className="border border-warn/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-warn">
-              No EXIF
-            </span>
-          )}
-        </div>
-        <span className="border border-line-strong bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-fg-dim">
+      <Link
+        to={`/projects/${projectId}/photos/${doc._id}`}
+        className="absolute inset-0"
+        aria-label={`Open ${doc.originalFilename}`}
+      >
+        <img
+          src={photoRawUrl(projectId, doc._id)}
+          alt={doc.originalFilename}
+          loading="lazy"
+          className="absolute inset-0 h-full w-full object-cover transition-opacity group-hover:opacity-80"
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.78)] via-transparent to-transparent"
+        />
+      </Link>
+
+      <div className="pointer-events-none absolute left-3 top-3 flex gap-1">
+        {hasGeo && (
+          <span className="border border-success/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
+            Geo ✓
+          </span>
+        )}
+        {exifRecorded && !hasGeo && (
+          <span className="border border-line-strong bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-fg-dim">
+            Exif
+          </span>
+        )}
+        {exifMissing && (
+          <span className="border border-warn/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-warn">
+            No EXIF
+          </span>
+        )}
+      </div>
+
+      <div className="pointer-events-none absolute right-3 top-3 flex items-start gap-2">
+        <span className="pointer-events-none border border-line-strong bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-fg-dim opacity-100 transition-opacity group-hover:opacity-0">
           {doc.mimeType.replace("image/", "")}
         </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onDelete();
+          }}
+          disabled={isDeleting}
+          aria-label={`Delete ${doc.originalFilename}`}
+          title="Delete photo"
+          className="pointer-events-auto inline-flex items-center justify-center border border-[rgba(255,255,255,0.2)] bg-[rgba(0,0,0,0.6)] p-1.5 text-fg opacity-0 transition-opacity hover:border-danger hover:text-danger group-hover:opacity-100 disabled:opacity-60"
+        >
+          <Trash2 className="!size-3.5" strokeWidth={2} />
+        </button>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 p-3">
+
+      <div className="pointer-events-none absolute bottom-0 left-0 right-0 p-3">
         <div className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-fg">
           {doc.originalFilename}
         </div>
@@ -768,7 +834,7 @@ function PhotoTile({
           {relativeTime(doc.serverReceivedAt)}
         </div>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -1004,32 +1070,89 @@ function EmptyRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DocumentList({ docs }: { docs: DocumentRecord[] }) {
+function DocumentList({
+  projectId,
+  docs,
+}: {
+  projectId: string;
+  docs: DocumentRecord[];
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const del = useDeletePlan(projectId, {
+    onSuccess: () => setError(null),
+    onError: (err) => setError(parsePlanDeleteError(err)),
+  });
+
+  async function onDelete(doc: DocumentRecord) {
+    if (del.isPending) return;
+    if (
+      !window.confirm(
+        `Delete "${doc.originalFilename}"? This also removes its classification and cancels any running analysis.`,
+      )
+    )
+      return;
+    setError(null);
+    del.mutate({ docId: doc._id });
+  }
+
   return (
-    <div className="border border-line">
-      {docs.map((d) => (
-        <div
-          key={d._id}
-          className="grid grid-cols-[1fr_auto_auto] items-center gap-6 border-b border-line bg-bg-1 px-5 py-4 last:border-b-0"
-        >
-          <div className="min-w-0">
-            <div className="truncate font-medium text-fg">
-              {d.originalFilename}
-            </div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
-              {d.kind} · {d.mimeType}
-            </div>
-          </div>
-          <span className="font-mono text-[11px] text-fg-dim">
-            {relativeTime(d.serverReceivedAt)}
-          </span>
-          <span className="font-mono text-[11px] text-fg-dim">
-            …{d.sha256.slice(-8)}
-          </span>
+    <div className="space-y-3">
+      {error && (
+        <div className="border-l-2 border-danger bg-bg-1 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-danger">
+          Error · {error}
         </div>
-      ))}
+      )}
+      <div className="border border-line">
+        {docs.map((d) => {
+          const pending = del.isPending && del.variables?.docId === d._id;
+          return (
+            <div
+              key={d._id}
+              className="grid grid-cols-[1fr_auto_auto_auto] items-center gap-6 border-b border-line bg-bg-1 px-5 py-4 last:border-b-0"
+            >
+              <div className="min-w-0">
+                <div className="truncate font-medium text-fg">
+                  {d.originalFilename}
+                </div>
+                <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
+                  {d.kind} · {d.mimeType}
+                </div>
+              </div>
+              <span className="font-mono text-[11px] text-fg-dim">
+                {relativeTime(d.serverReceivedAt)}
+              </span>
+              <span className="font-mono text-[11px] text-fg-dim">
+                …{d.sha256.slice(-8)}
+              </span>
+              <button
+                type="button"
+                onClick={() => onDelete(d)}
+                disabled={pending}
+                aria-label={`Delete ${d.originalFilename}`}
+                title="Delete plan"
+                className="inline-flex items-center justify-center border border-line-strong p-2 text-fg-dim transition-colors hover:border-danger hover:text-danger disabled:opacity-50"
+              >
+                <Trash2 className="!size-3.5" strokeWidth={2} />
+              </button>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
+}
+
+function parsePlanDeleteError(err: ApiError): string {
+  if (err.status === 409) {
+    try {
+      const body = JSON.parse(err.body) as { error?: string };
+      if (body.error) return body.error;
+    } catch {
+      // fall through
+    }
+    return "Document is referenced by a milestone — edit the finance plan first.";
+  }
+  return `${err.status} · ${err.body.slice(0, 160)}`;
 }
 
 function formatUSD(n: number): string {
