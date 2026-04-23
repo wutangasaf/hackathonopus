@@ -47,6 +47,61 @@ export type MilestoneStatus = (typeof MILESTONE_STATUSES)[number];
 export const AGENT_RUN_STATUSES = ["running", "succeeded", "failed"] as const;
 export type AgentRunStatus = (typeof AGENT_RUN_STATUSES)[number];
 
+export const PHOTO_QUALITIES = ["GOOD", "NEEDS_RETAKE"] as const;
+export type PhotoQuality = (typeof PHOTO_QUALITIES)[number];
+
+export const OBSERVED_STATES = [
+  "PRESENT",
+  "ABSENT",
+  "PARTIAL",
+  "DEVIATED",
+] as const;
+export type ObservedState = (typeof OBSERVED_STATES)[number];
+
+export const PER_ELEMENT_STATUSES = [
+  "VERIFIED",
+  "PARTIAL",
+  "MISSING",
+  "DEVIATED",
+  "UNVERIFIED",
+] as const;
+export type PerElementStatus = (typeof PER_ELEMENT_STATUSES)[number];
+
+export const SOV_FLAGS = [
+  "ok",
+  "minor",
+  "material",
+  "unapproved_scope",
+] as const;
+export type SovFlag = (typeof SOV_FLAGS)[number];
+
+export const OVERALL_STATUSES = [
+  "ON_TRACK",
+  "BEHIND",
+  "DEVIATION_FOUND",
+  "TECHNICAL_DEFAULT_RISK",
+] as const;
+export type OverallStatus = (typeof OVERALL_STATUSES)[number];
+
+export const DRAW_VERDICTS = [
+  "APPROVE",
+  "APPROVE_WITH_CONDITIONS",
+  "HOLD",
+  "REJECT",
+] as const;
+export type DrawVerdictValue = (typeof DRAW_VERDICTS)[number];
+
+export const AGENT_NAMES = [
+  "PlanClassifier",
+  "PlanFormatExtractor",
+  "FinancePlanIngester",
+  "PhotoGuidance",
+  "PhotoQuality",
+  "PhotoToPlanFormat",
+  "ComparisonAndGap",
+] as const;
+export type AgentName = (typeof AGENT_NAMES)[number];
+
 export type ObjectIdString = string;
 export type IsoDateString = string;
 
@@ -253,6 +308,107 @@ export type UploadPlansResponse = {
 export type UploadPhotosResponse = {
   documents: DocumentRecord[];
   pendingAgents: readonly string[];
+  pipelineKickedOffFor: ObjectIdString[];
 };
 
 export type PlanFormatList = { formats: PlanFormat[] };
+
+// ---------- Photo guidance (Agent 4) ----------
+
+export type PhotoGuidanceShot = {
+  shotId: string;
+  discipline: Discipline;
+  target: string;
+  framing?: string;
+  angle?: string;
+  lighting?: string;
+  safety?: string;
+  referenceElementIds: string[];
+};
+
+export type PhotoGuidance = {
+  _id: ObjectIdString;
+  projectId: ObjectIdString;
+  milestoneId: ObjectIdString;
+  shotList: PhotoGuidanceShot[];
+  modelVersion: string;
+  generatedAt: IsoDateString;
+};
+
+// ---------- Photo detail (Agents 5+6) ----------
+
+export type PhotoAssessment = {
+  quality: PhotoQuality;
+  discipline: Discipline | null;
+  matchedShotId?: string;
+  phaseFit?: string;
+  issues: string[];
+  retakeInstructions?: string;
+};
+
+export type ObservationMatchedElement = {
+  elementId: string;
+  observedState: ObservedState;
+  observedPct?: number;
+  confidence: number;
+  evidence: string;
+};
+
+export type Observation = {
+  matchedElements: ObservationMatchedElement[];
+  unexpectedObservations: string[];
+  safetyFlags: string[];
+};
+
+export type PhotoDetailResponse = {
+  document: DocumentRecord;
+  assessment: PhotoAssessment | null;
+  observation: Observation | null;
+};
+
+// ---------- Draw reports (Agent 7) ----------
+
+export type PerElementFinding = {
+  discipline: Discipline;
+  elementId: string;
+  plannedState: string;
+  observedState: ObservedState | PerElementStatus | string;
+  status: PerElementStatus;
+  citations: string[];
+};
+
+export type SovLineFinding = {
+  sovLineNumber: string;
+  claimedPct: number;
+  observedPct: number;
+  variance: number;
+  flag: SovFlag;
+  evidencePhotoIds: ObjectIdString[];
+};
+
+export type DrawVerdict = {
+  verdict: DrawVerdictValue;
+  reasoning: string;
+  conditions?: string[];
+  missingRequirements?: string[];
+};
+
+export type GapReport = {
+  _id: ObjectIdString;
+  projectId: ObjectIdString;
+  milestoneId: ObjectIdString;
+  perElement: PerElementFinding[];
+  sovLineFindings: SovLineFinding[];
+  overallStatus: OverallStatus;
+  daysOffset?: number;
+  loanInBalance: boolean;
+  remainingBudget?: number;
+  remainingCost?: number;
+  unapprovedDeviations: string[];
+  narrative: string;
+  drawVerdict: DrawVerdict;
+  modelVersion: string;
+  generatedAt: IsoDateString;
+  createdAt: IsoDateString;
+  updatedAt: IsoDateString;
+};

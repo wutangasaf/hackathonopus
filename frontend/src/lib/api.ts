@@ -4,8 +4,11 @@ import type {
   Discipline,
   DocumentRecord,
   FinancePlan,
+  GapReport,
   Milestone,
   PatchMilestoneRequest,
+  PhotoDetailResponse,
+  PhotoGuidance,
   PlanClassification,
   PlanFormat,
   PlanFormatList,
@@ -54,9 +57,21 @@ async function upload<T>(
   return (await res.json()) as T;
 }
 
+function qs(params: Record<string, string | number | boolean | undefined>): string {
+  const entries = Object.entries(params).filter(
+    (entry): entry is [string, string | number | boolean] =>
+      entry[1] !== undefined,
+  );
+  if (entries.length === 0) return "";
+  const sp = new URLSearchParams();
+  for (const [k, v] of entries) sp.set(k, String(v));
+  return `?${sp.toString()}`;
+}
+
 export const api = {
   health: () => json<{ ok: true }>("/health"),
 
+  // Projects
   listProjects: () => json<Project[]>("/api/projects"),
   getProject: (id: string) => json<Project>(`/api/projects/${id}`),
   createProject: (body: { name: string; address?: string }) =>
@@ -65,6 +80,7 @@ export const api = {
       body: JSON.stringify(body),
     }),
 
+  // Plans
   listPlans: (id: string) =>
     json<DocumentRecord[]>(`/api/projects/${id}/plans`),
   uploadPlans: (id: string, files: File[]) =>
@@ -76,6 +92,7 @@ export const api = {
   getPlanFormatFor: (id: string, d: Discipline) =>
     json<PlanFormat>(`/api/projects/${id}/plan-format?discipline=${d}`),
 
+  // Finance plan
   createFinancePlan: (id: string, body: CreateFinancePlanRequest) =>
     json<FinancePlan>(`/api/projects/${id}/finance-plan`, {
       method: "POST",
@@ -103,13 +120,40 @@ export const api = {
   getCurrentMilestone: (id: string) =>
     json<Milestone>(`/api/projects/${id}/finance-plan/current-milestone`),
 
+  // Photo guidance (Agent 4)
+  getPhotoGuidance: (
+    id: string,
+    opts: { milestoneId?: string; regenerate?: boolean } = {},
+  ) =>
+    json<PhotoGuidance>(
+      `/api/projects/${id}/photo-guidance${qs({
+        milestoneId: opts.milestoneId,
+        regenerate: opts.regenerate ? 1 : undefined,
+      })}`,
+    ),
+
+  // Photos
   listPhotos: (id: string) =>
     json<DocumentRecord[]>(`/api/projects/${id}/photos`),
   uploadPhotos: (id: string, files: File[]) =>
     upload<UploadPhotosResponse>(`/api/projects/${id}/photos`, files),
   getPhoto: (projectId: string, photoId: string) =>
-    json<DocumentRecord>(`/api/projects/${projectId}/photos/${photoId}`),
+    json<PhotoDetailResponse>(
+      `/api/projects/${projectId}/photos/${photoId}`,
+    ),
 
+  // Draw reports (Agent 7)
+  createReport: (id: string, opts: { milestoneId?: string } = {}) =>
+    json<GapReport>(
+      `/api/projects/${id}/reports${qs({ milestoneId: opts.milestoneId })}`,
+      { method: "POST" },
+    ),
+  listReports: (id: string) =>
+    json<GapReport[]>(`/api/projects/${id}/reports`),
+  getReport: (id: string, reportId: string) =>
+    json<GapReport>(`/api/projects/${id}/reports/${reportId}`),
+
+  // Agent runs
   listRuns: (id: string) => json<AgentRun[]>(`/api/projects/${id}/runs`),
   getRun: (id: string, runId: string) =>
     json<AgentRun>(`/api/projects/${id}/runs/${runId}`),
