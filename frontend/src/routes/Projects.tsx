@@ -39,7 +39,7 @@ export default function Projects() {
             <h1 className="mt-6 font-extrabold leading-none tracking-tight2 text-fg text-[clamp(40px,6vw,96px)]">
               Your projects.
             </h1>
-            <p className="mt-4 font-mono text-[11px] uppercase tracking-mono text-fg-muted">
+            <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-dim">
               {isLoading
                 ? "Loading…"
                 : isError
@@ -93,7 +93,7 @@ function ProjectCard({ project }: { project: Project }) {
         </div>
         <StatusChip status={project.status} />
       </header>
-      <footer className="mt-8 flex items-center justify-between font-mono text-[10px] uppercase tracking-mono text-fg-muted">
+      <footer className="mt-8 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
         <span>Created {relativeTime(project.createdAt)}</span>
         <span
           aria-hidden

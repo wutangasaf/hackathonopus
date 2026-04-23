@@ -80,7 +80,7 @@ export function PlansDropzone({ projectId }: { projectId: string }) {
         className={cn(
           "relative flex min-h-[180px] cursor-pointer flex-col items-center justify-center border border-dashed p-8 text-center transition-colors",
           border,
-          uploading ? "cursor-wait bg-bg-1" : "bg-bg hover:bg-bg-1",
+          uploading ? "cursor-wait bg-bg-2" : "bg-bg-1 hover:bg-bg-2",
         )}
       >
         {/* Hairline progress bar per DESIGN-KIT §7 */}
@@ -93,10 +93,10 @@ export function PlansDropzone({ projectId }: { projectId: string }) {
           </div>
         )}
 
-        <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-fg-dim">
+        <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-fg">
           {label}
         </div>
-        <p className="mt-3 max-w-sm text-xs text-fg-muted">
+        <p className="mt-3 max-w-sm text-[13px] leading-[1.5] text-fg-dim">
           Architectural, structural, electrical, plumbing PDFs.
           Agent 1 labels every page; Agent 2 pulls a format per discipline.
         </p>

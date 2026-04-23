@@ -388,7 +388,7 @@ function MilestonesTable({
     <section>
       <SectionLabel>02 · Milestones</SectionLabel>
       <div className="border border-line">
-        <div className="grid grid-cols-[40px_1fr_120px_120px_140px_120px] gap-px border-b border-line bg-bg-1 font-mono text-[10px] uppercase tracking-mono text-fg-muted">
+        <div className="grid grid-cols-[40px_1fr_120px_120px_140px_120px] gap-px border-b border-line-strong bg-bg-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
           <HeadCell>#</HeadCell>
           <HeadCell>Name</HeadCell>
           <HeadCell>Start</HeadCell>
@@ -403,11 +403,11 @@ function MilestonesTable({
               key={m._id}
               className={cn(
                 "grid grid-cols-[40px_1fr_120px_120px_140px_120px] gap-px border-b border-line last:border-b-0",
-                isCurrent ? "bg-bg-1" : "bg-bg",
+                isCurrent ? "bg-bg-2" : "bg-bg-1",
               )}
             >
               <BodyCell>
-                <span className="font-mono text-[11px] text-fg-muted">
+                <span className="font-mono text-[11px] text-fg-dim">
                   {m.sequence}
                 </span>
               </BodyCell>
@@ -510,7 +510,7 @@ function PhotoGrid({
           className="group flex aspect-[4/3] flex-col justify-between bg-bg-1 p-4 transition-colors hover:bg-bg-2"
         >
           <div className="flex items-start justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
               {d.mimeType.replace("image/", "")}
             </span>
             <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
@@ -527,7 +527,7 @@ function PhotoGrid({
             <div className="mt-3 truncate font-mono text-[11px] uppercase tracking-[0.12em] text-fg">
               {d.originalFilename}
             </div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
               {relativeTime(d.serverReceivedAt)}
             </div>
           </div>
@@ -566,16 +566,16 @@ function ReportsTab({ projectId }: { projectId: string }) {
           </button>
         </div>
         {!finance.data && !finance.isLoading && (
-          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-dim">
             Publish a finance plan first · Gantt builder → Publish
           </p>
         )}
         {createReport.isPending && (
           <div className="mt-4 border border-line bg-bg-1 p-5">
-            <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-dim">
+            <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-accent">
               Agent 7 · Comparison &amp; Gap
             </div>
-            <p className="mt-2 text-sm text-fg-muted">
+            <p className="mt-2 text-sm leading-[1.55] text-fg-dim">
               Aggregating plan elements, observations, and finance rules.
               Typically 30–60 seconds. You&apos;ll be taken to the report
               when it&apos;s ready.
@@ -676,7 +676,7 @@ function AgentsRail({ projectId }: { projectId: string }) {
           return <AgentRow key={name} name={name} run={run} />;
         })}
       </div>
-      <div className="mt-3 font-mono text-[10px] uppercase tracking-mono text-fg-muted">
+      <div className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
         {isLoading
           ? "Loading runs…"
           : isError
@@ -700,7 +700,7 @@ function AgentRow({ name, run }: { name: AgentName; run: AgentRun | undefined })
         <div className="truncate font-mono text-[11px] uppercase tracking-mono text-fg">
           {AGENT_LABEL[name]}
         </div>
-        <div className="mt-1 truncate font-mono text-[10px] text-fg-muted">
+        <div className="mt-1 truncate font-mono text-[10px] text-fg-dim">
           {run
             ? `${relativeTime(run.startedAt)}${run.modelVersion ? " · " + run.modelVersion : ""}`
             : "no runs"}
@@ -775,20 +775,20 @@ function DocumentList({ docs }: { docs: DocumentRecord[] }) {
       {docs.map((d) => (
         <div
           key={d._id}
-          className="grid grid-cols-[1fr_auto_auto] items-center gap-6 border-b border-line bg-bg px-5 py-4 last:border-b-0"
+          className="grid grid-cols-[1fr_auto_auto] items-center gap-6 border-b border-line bg-bg-1 px-5 py-4 last:border-b-0"
         >
           <div className="min-w-0">
             <div className="truncate font-medium text-fg">
               {d.originalFilename}
             </div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-mono text-fg-muted">
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
               {d.kind} · {d.mimeType}
             </div>
           </div>
-          <span className="font-mono text-[10px] text-fg-muted">
+          <span className="font-mono text-[11px] text-fg-dim">
             {relativeTime(d.serverReceivedAt)}
           </span>
-          <span className="font-mono text-[10px] text-fg-muted">
+          <span className="font-mono text-[11px] text-fg-dim">
             …{d.sha256.slice(-8)}
           </span>
         </div>

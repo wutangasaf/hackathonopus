@@ -83,7 +83,7 @@ export function PhotosDropzone({ projectId }: { projectId: string }) {
         className={cn(
           "relative flex min-h-[160px] cursor-pointer flex-col items-center justify-center border border-dashed p-7 text-center transition-colors",
           border,
-          uploading ? "cursor-wait bg-bg-1" : "bg-bg hover:bg-bg-1",
+          uploading ? "cursor-wait bg-bg-2" : "bg-bg-1 hover:bg-bg-2",
         )}
       >
         {uploading && (
@@ -94,10 +94,10 @@ export function PhotosDropzone({ projectId }: { projectId: string }) {
             <div className="h-full w-1/3 animate-[plumbline-progress_1.2s_ease-in-out_infinite] bg-accent" />
           </div>
         )}
-        <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-fg-dim">
+        <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-fg">
           {label}
         </div>
-        <p className="mt-3 max-w-sm text-xs text-fg-muted">
+        <p className="mt-3 max-w-sm text-[13px] leading-[1.5] text-fg-dim">
           Phone photos of the active milestone. Agent 5 grades quality;
           Agent 6 converts each photo into the plan&apos;s element format.
         </p>

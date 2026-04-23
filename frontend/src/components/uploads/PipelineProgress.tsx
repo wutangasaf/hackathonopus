@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { relativeTime } from "@/lib/time";
 import type { AgentRun } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { usePlans } from "@/services/plans";
+import { usePlanClassification, usePlans } from "@/services/plans";
 import { useLatestRunByAgent } from "@/services/runs";
 
 const AGENTS: {
@@ -30,6 +30,7 @@ const AGENTS: {
 
 export function PipelineProgress({ projectId }: { projectId: string }) {
   const plans = usePlans(projectId);
+  const classification = usePlanClassification(projectId);
   const { latestByAgent, isLoading } = useLatestRunByAgent(projectId);
 
   const classifier = latestByAgent.get("PlanClassifier");
@@ -41,33 +42,86 @@ export function PipelineProgress({ projectId }: { projectId: string }) {
     classifier?.status === "failed" || extractor?.status === "failed";
   const hasPlans = (plans.data?.length ?? 0) > 0;
 
-  if (isLoading && !latestByAgent.size) {
-    return null;
-  }
+  if (isLoading && !latestByAgent.size) return null;
+
+  const sheetCount = classification.data?.sheets.length;
 
   return (
-    <div className="border border-line bg-bg-1">
-      <div className="flex flex-col divide-y divide-line">
-        {AGENTS.map((a) => {
-          const run = latestByAgent.get(a.name);
-          return <Row key={a.name} meta={a} run={run} hasPlans={hasPlans} />;
-        })}
+    <div className="space-y-4">
+      <div className="border border-line bg-bg-1">
+        <div className="flex flex-col divide-y divide-line">
+          {AGENTS.map((a) => {
+            const run = latestByAgent.get(a.name);
+            return <Row key={a.name} meta={a} run={run} hasPlans={hasPlans} />;
+          })}
+        </div>
       </div>
-      {(bothDone || anyFailed) && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line bg-bg px-5 py-4">
-          <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-dim">
-            {bothDone ? "Ready to build" : "Pipeline halted"}
+
+      {bothDone && <NextStepBanner projectId={projectId} sheetCount={sheetCount} />}
+
+      {anyFailed && (
+        <div className="border-l-2 border-danger bg-bg-1 px-5 py-4">
+          <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-danger">
+            Pipeline halted
           </div>
-          {bothDone && (
-            <Link
-              to={`/projects/${projectId}/gantt`}
-              className="inline-flex items-center gap-2 bg-accent px-4 py-2 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940]"
-            >
-              Open Gantt Builder ↗
-            </Link>
-          )}
+          <p className="mt-1 font-mono text-[11px] leading-[1.55] text-fg-dim">
+            One of the classification agents failed. Check the run stream
+            for the error and re-upload the affected PDFs.
+          </p>
         </div>
       )}
+    </div>
+  );
+}
+
+function NextStepBanner({
+  projectId,
+  sheetCount,
+}: {
+  projectId: string;
+  sheetCount: number | undefined;
+}) {
+  return (
+    <div className="relative overflow-hidden border border-line-strong bg-bg-1 p-6 lg:p-8">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-accent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-20 -right-12 h-64 w-3/5"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, rgba(255,107,26,0.08), transparent 65%)",
+        }}
+      />
+      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="max-w-xl">
+          <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
+            <span aria-hidden className="inline-block h-1.5 w-1.5 bg-accent" />
+            Next · Gantt builder
+          </div>
+          <h3 className="mt-3 text-[22px] font-extrabold leading-tight tracking-[-0.02em] text-fg lg:text-[28px]">
+            Plans labeled.
+            <br className="hidden lg:block" />{" "}
+            <span className="text-fg-dim">
+              Set time frames and pick docs per milestone.
+            </span>
+          </h3>
+          <p className="mt-3 text-[13px] leading-[1.55] text-fg-dim">
+            Agents 1 and 2 are done{typeof sheetCount === "number"
+              ? ` — ${sheetCount} sheet${sheetCount === 1 ? "" : "s"} classified across disciplines`
+              : ""}. Next, drag the labeled pages onto the right milestones
+            and lock in each tranche&apos;s window.
+          </p>
+        </div>
+        <Link
+          to={`/projects/${projectId}/gantt`}
+          className="inline-flex shrink-0 items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
+        >
+          Open Gantt builder <span aria-hidden>↗</span>
+        </Link>
+      </div>
     </div>
   );
 }
@@ -84,7 +138,7 @@ function Row({
   let status: "queued" | "running" | "done" | "failed";
   let text: string;
   if (!run) {
-    status = hasPlans ? "queued" : "queued";
+    status = "queued";
     text = hasPlans ? "QUEUED…" : "AWAITING UPLOAD";
   } else if (run.status === "running") {
     status = "running";
@@ -104,7 +158,7 @@ function Row({
         ? "bg-success"
         : status === "failed"
           ? "bg-danger"
-          : "border border-fg-muted";
+          : "border border-fg-dim";
 
   return (
     <div className="flex items-center justify-between gap-4 px-5 py-4">
@@ -124,7 +178,9 @@ function Row({
             ? "text-danger"
             : status === "done"
               ? "text-success"
-              : "text-fg-muted",
+              : status === "running"
+                ? "text-warn"
+                : "text-fg-dim",
         )}
       >
         {text}
