@@ -1,73 +1,50 @@
-# React + TypeScript + Vite
+# Plumbline — frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React 19 + Vite + Tailwind + shadcn/ui UI for the Plumbline draw-inspection co-pilot. See the [root README](../README.md) for the product pitch and backend setup.
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
+npm run dev         # http://localhost:5173
+npm run typecheck
+npm run build
+npm run lint
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+The dev server talks to the backend at `http://localhost:4000` via the `services/` layer (see `src/services/`). Start the backend first (see [`backend/README.md`](../backend/README.md)).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## UI flow → backend endpoints
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| Route                              | Page              | Backend endpoints used                                           |
+|------------------------------------|-------------------|-------------------------------------------------------------------|
+| `/`                                | Landing           | —                                                                 |
+| `/projects`                        | Projects list     | `GET/POST /api/projects`                                          |
+| `/projects/:id`                    | Project detail    | Plans upload/list/delete, photos upload/list, finance-plan read, runs, report generation |
+| `/projects/:id/gantt`              | Finance-plan builder | `GET/POST/PUT /api/projects/:id/finance-plan`                  |
+| `/projects/:id/photos/:photoId`    | Photo detail      | `GET /photos/:id`, `GET /photos/:id/raw`, `DELETE /photos/:id`    |
+| `/projects/:id/reports/:reportId`  | Gap report        | `GET /reports/:id`                                                |
+| `/projects/:id/runs`               | Agent runs        | `GET /runs`                                                       |
+
+## Source layout
+
 ```
+src/
+  App.tsx              react-router routes
+  routes/              one page per route (+ gantt/ subcomponents for the finance-plan builder)
+  components/
+    blocks/            feature-level compositions
+    layout/            app shell
+    ui/                shadcn primitives
+    uploads/           multipart upload UI
+  services/            TanStack-Query hooks + fetch wrappers, one file per backend resource
+  stores/              Zustand store for the gantt builder
+  lib/                 utils
+  styles/              Tailwind + global CSS
+```
+
+## State management
+
+- **Server state**: TanStack Query (`services/queryKeys.ts` centralises keys).
+- **Local UI state**: component `useState` + a single Zustand store (`stores/ganttStore.ts`) for the multi-step finance-plan builder.
+- **HEIC photos**: the backend transcodes HEIC → JPEG on `GET /photos/:id/raw`, so `<img src={rawUrl}>` works in every browser.
