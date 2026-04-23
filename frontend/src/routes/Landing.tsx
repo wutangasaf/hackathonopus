@@ -220,11 +220,11 @@ export default function Landing() {
               <h1 className="mt-6 break-words font-black leading-[0.88] tracking-display text-fg text-[clamp(44px,8.5vw,168px)] lg:mt-10 lg:leading-[0.86]">
                 Build
                 <br />
-                to <span className="text-brand">plan</span>.
+                to <span className="text-accent">plan</span>.
                 <br />
                 Release
                 <br />
-                on <span className="text-brand">proof</span>.
+                on <span className="text-accent">proof</span>.
               </h1>
               <p className="mt-5 max-w-[540px] text-fg-dim text-[clamp(15px,1.4vw,20px)] leading-[1.5] lg:mt-7">
                 AI co-pilot for bank-financed construction. Upload approved
@@ -235,7 +235,7 @@ export default function Landing() {
               <div className="mt-8 flex flex-wrap gap-4 lg:mt-12">
                 <Link
                   to="/projects"
-                  className="inline-flex items-center gap-[10px] border border-transparent bg-brand px-[26px] py-[14px] font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.15)]"
+                  className="inline-flex items-center gap-[10px] border border-transparent bg-accent px-[26px] py-[14px] font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.15)]"
                 >
                   Start a project <span aria-hidden>↗</span>
                 </Link>
@@ -331,7 +331,7 @@ export default function Landing() {
                   className="flex min-h-[200px] flex-col justify-between bg-bg px-5 py-7 transition-colors hover:bg-bg-1"
                 >
                   <div>
-                    <div className="font-mono text-[11px] tracking-mono text-brand">
+                    <div className="font-mono text-[11px] tracking-mono text-accent">
                       {agent.num}
                     </div>
                     <h4 className="mt-[18px] text-sm font-bold leading-[1.25] tracking-[-0.01em]">
@@ -346,7 +346,7 @@ export default function Landing() {
                       aria-hidden
                       className={cn(
                         "inline-block h-[6px] w-[6px]",
-                        agent.kind === "vision" ? "bg-warn" : "bg-brand",
+                        agent.kind === "vision" ? "bg-warn" : "bg-accent",
                       )}
                     />
                     {agent.kind === "vision" ? "Vision" : "Text"}
@@ -466,7 +466,7 @@ export default function Landing() {
                     ))}
                   </div>
 
-                  <div className="mt-8 border-l-2 border-brand bg-bg px-6 py-5">
+                  <div className="mt-8 border-l-2 border-accent bg-bg px-6 py-5">
                     <div className="mb-2 font-mono text-[10px] uppercase tracking-mono text-fg-dim">
                       Narrative · CRMC draft
                     </div>

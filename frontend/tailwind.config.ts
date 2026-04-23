@@ -19,7 +19,9 @@ export default {
         "fg-muted": "var(--fg-muted)",
         line: "var(--line)",
         "line-strong": "var(--line-strong)",
-        brand: "var(--accent)",
+        accent: "var(--accent)",
+        "accent-dim": "var(--accent-dim)",
+        "accent-glow": "var(--accent-glow)",
         success: "var(--success)",
         warn: "var(--warn)",
         danger: "var(--danger)",
@@ -39,10 +41,6 @@ export default {
         muted: {
           DEFAULT: "var(--bg-1)",
           foreground: "var(--fg-dim)",
-        },
-        accent: {
-          DEFAULT: "var(--bg-2)",
-          foreground: "var(--fg)",
         },
         destructive: {
           DEFAULT: "var(--danger)",

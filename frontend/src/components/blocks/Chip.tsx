@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-type ChipTone = "default" | "brand" | "success" | "warn" | "danger";
+type ChipTone = "default" | "accent" | "success" | "warn" | "danger";
 
 type ChipProps = HTMLAttributes<HTMLSpanElement> & {
   tone?: ChipTone;
@@ -9,7 +9,7 @@ type ChipProps = HTMLAttributes<HTMLSpanElement> & {
 
 const TONE_CLASS: Record<ChipTone, string> = {
   default: "border-line-strong text-fg-dim",
-  brand: "border-brand/60 text-brand",
+  accent: "border-accent/60 text-accent",
   success: "border-success/40 text-success",
   warn: "border-warn/50 text-warn",
   danger: "border-danger/40 text-danger",

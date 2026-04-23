@@ -16,7 +16,7 @@ export function Nav() {
         <Link to="/" className="flex items-center gap-[10px]">
           <span
             aria-hidden
-            className="inline-block h-[14px] w-[3px] bg-brand"
+            className="inline-block h-[14px] w-[3px] bg-accent"
             style={{ boxShadow: "0 0 12px rgba(255, 107, 26, 0.4)" }}
           />
           <span className="font-mono text-[13px] font-bold uppercase tracking-eyebrow">
@@ -39,7 +39,7 @@ export function Nav() {
               to="/projects"
               className={({ isActive }) =>
                 cn(
-                  "border-b border-brand pb-[2px] text-fg transition-colors",
+                  "border-b border-accent pb-[2px] text-fg transition-colors",
                   !isActive && "hover:text-fg",
                 )
               }

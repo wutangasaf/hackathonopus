@@ -157,7 +157,7 @@ function ProjectHeader({
 
 function ProjectStatusChip({ status }: { status: ProjectStatus }) {
   const tone =
-    status === "ACTIVE" ? "brand" : status === "COMPLETED" ? "success" : "default";
+    status === "ACTIVE" ? "accent" : status === "COMPLETED" ? "success" : "default";
   return <Chip tone={tone}>{status}</Chip>;
 }
 
@@ -411,7 +411,7 @@ function MilestonesTable({
               <BodyCell>
                 <div className="font-medium text-fg">{m.name}</div>
                 {isCurrent && (
-                  <div className="mt-1 font-mono text-[10px] uppercase tracking-mono text-brand">
+                  <div className="mt-1 font-mono text-[10px] uppercase tracking-mono text-accent">
                     ◆ current
                   </div>
                 )}

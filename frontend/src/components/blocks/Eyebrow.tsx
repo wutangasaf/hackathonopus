@@ -4,11 +4,11 @@ import { cn } from "@/lib/utils";
 type EyebrowProps = {
   children: ReactNode;
   className?: string;
-  dotColor?: "brand" | "success" | "warn" | "danger";
+  dotColor?: "accent" | "success" | "warn" | "danger";
 };
 
 const DOT_CLASS: Record<NonNullable<EyebrowProps["dotColor"]>, string> = {
-  brand: "bg-brand",
+  accent: "bg-accent",
   success: "bg-success",
   warn: "bg-warn",
   danger: "bg-danger",
@@ -17,7 +17,7 @@ const DOT_CLASS: Record<NonNullable<EyebrowProps["dotColor"]>, string> = {
 export function Eyebrow({
   children,
   className,
-  dotColor = "brand",
+  dotColor = "accent",
 }: EyebrowProps) {
   return (
     <span

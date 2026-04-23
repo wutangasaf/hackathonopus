@@ -65,7 +65,7 @@ export default function Runs() {
               {id && (
                 <Link
                   to={`/projects/${id}`}
-                  className="mt-6 inline-flex items-center gap-[6px] font-mono text-[10px] uppercase tracking-eyebrow text-fg transition-colors hover:text-brand"
+                  className="mt-6 inline-flex items-center gap-[6px] font-mono text-[10px] uppercase tracking-eyebrow text-fg transition-colors hover:text-accent"
                 >
                   Back to project ↗
                 </Link>

@@ -6,8 +6,8 @@ const VARIANT_CLASS: Record<Variant, string> = {
   base: "bg-bg-2 border border-line",
   mid: "bg-bg-3 border border-line",
   hi: "bg-[#2a2a2a] border border-line",
-  on: "bg-brand border border-brand",
-  onGlow: "bg-brand border border-brand animate-glow",
+  on: "bg-accent border border-accent",
+  onGlow: "bg-accent border border-accent animate-glow",
 };
 
 // Mirrors the 7×8 cell layout from design/mockup.html.
