@@ -441,6 +441,7 @@ function ClassificationSummary({
 
 function FinanceTab({ projectId }: { projectId: string }) {
   const finance = useFinancePlan(projectId);
+  const classification = usePlanClassification(projectId);
   const current = useCurrentMilestone(projectId, {
     enabled: Boolean(finance.data),
   });
@@ -450,11 +451,10 @@ function FinanceTab({ projectId }: { projectId: string }) {
     return <InlineError message={finance.error?.message ?? "Failed to load finance plan"} />;
   if (!finance.data)
     return (
-      <EmptyRow>
-        No finance plan yet. The Gantt Builder (POST{" "}
-        <code>/finance-plan</code>) ships in the next turn; for now you can POST
-        the JSON directly.
-      </EmptyRow>
+      <NoFinancePlanCTA
+        projectId={projectId}
+        sheetCount={classification.data?.sheets.length}
+      />
     );
 
   return (
@@ -464,6 +464,76 @@ function FinanceTab({ projectId }: { projectId: string }) {
         plan={finance.data}
         currentMilestoneId={current.data?._id}
       />
+    </div>
+  );
+}
+
+function NoFinancePlanCTA({
+  projectId,
+  sheetCount,
+}: {
+  projectId: string;
+  sheetCount: number | undefined;
+}) {
+  const plansReady = typeof sheetCount === "number" && sheetCount > 0;
+  return (
+    <div className="relative overflow-hidden border border-line-strong bg-bg-1 p-6 lg:p-8">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-y-0 left-0 w-0.5 bg-accent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -top-20 -right-12 h-64 w-3/5"
+        style={{
+          background:
+            "radial-gradient(ellipse at center, rgba(255,107,26,0.08), transparent 65%)",
+        }}
+      />
+      <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+        <div className="max-w-xl">
+          <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
+            <span aria-hidden className="inline-block h-1.5 w-1.5 bg-accent" />
+            {plansReady ? "Next · Gantt builder" : "Blocked · upload plans"}
+          </div>
+          <h3 className="mt-3 text-[22px] font-extrabold leading-tight tracking-[-0.02em] text-fg lg:text-[28px]">
+            {plansReady ? (
+              <>
+                No finance plan yet.
+                <br className="hidden lg:block" />{" "}
+                <span className="text-fg-dim">
+                  Define time frames and pin docs per milestone.
+                </span>
+              </>
+            ) : (
+              <>
+                Upload plans first.
+                <br className="hidden lg:block" />{" "}
+                <span className="text-fg-dim">
+                  The Gantt builder pulls chips from classified sheets.
+                </span>
+              </>
+            )}
+          </h3>
+          <p className="mt-3 text-[13px] leading-[1.55] text-fg-dim">
+            {plansReady
+              ? `Agents 1 and 2 finished — ${sheetCount} sheet${sheetCount === 1 ? "" : "s"} classified. In the Gantt builder you set each milestone's window and tranche, then drag the labeled sheets onto the rows that prove them. Publishing creates the finance plan and attaches the docs in one step.`
+              : "The Gantt builder needs classified plan sheets to offer as draggable chips. Head to the Plans tab, drop the PDFs, wait for the pipeline, then come back here."}
+          </p>
+        </div>
+        {plansReady ? (
+          <Link
+            to={`/projects/${projectId}/gantt`}
+            className="inline-flex shrink-0 items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
+          >
+            Open Gantt builder <span aria-hidden>↗</span>
+          </Link>
+        ) : (
+          <span className="inline-flex shrink-0 items-center gap-2.5 border border-line-strong bg-bg-1 px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg-muted">
+            Plans tab required
+          </span>
+        )}
+      </div>
     </div>
   );
 }
