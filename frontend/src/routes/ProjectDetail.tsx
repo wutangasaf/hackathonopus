@@ -6,6 +6,7 @@ import { Chip } from "@/components/blocks/Chip";
 import { Eyebrow } from "@/components/blocks/Eyebrow";
 import { Container } from "@/components/layout/Container";
 import { Nav } from "@/components/layout/Nav";
+import { PhotoGuidance } from "@/components/uploads/PhotoGuidance";
 import { PhotosDropzone } from "@/components/uploads/PhotosDropzone";
 import { PipelineProgress } from "@/components/uploads/PipelineProgress";
 import { PlansDropzone } from "@/components/uploads/PlansDropzone";
@@ -471,13 +472,18 @@ function PhotosTab({ projectId }: { projectId: string }) {
   return (
     <div className="space-y-10">
       <section>
-        <SectionLabel>01 · Upload jobsite photos</SectionLabel>
+        <SectionLabel>01 · Photo guidance (Agent 4)</SectionLabel>
+        <PhotoGuidance projectId={projectId} />
+      </section>
+
+      <section>
+        <SectionLabel>02 · Upload jobsite photos</SectionLabel>
         <PhotosDropzone projectId={projectId} />
       </section>
 
       <section>
         <SectionLabel>
-          02 · Photo stream{count > 0 ? ` · ${count}` : ""}
+          03 · Photo stream{count > 0 ? ` · ${count}` : ""}
         </SectionLabel>
         {photos.isLoading ? (
           <SkeletonRows count={3} />
