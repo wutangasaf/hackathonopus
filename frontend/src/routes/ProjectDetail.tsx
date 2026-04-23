@@ -76,6 +76,15 @@ export default function ProjectDetail() {
           errorText={projectQuery.error?.message}
         />
 
+        {id && (
+          <div className="mt-8">
+            <VerificationBanner
+              projectId={id}
+              onOpenPhotos={() => setTab("photos")}
+            />
+          </div>
+        )}
+
         <div className="mt-10 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_320px]">
           <div>
             <TabBar current={tab} onChange={setTab} />
@@ -90,6 +99,122 @@ export default function ProjectDetail() {
         </div>
       </Container>
     </>
+  );
+}
+
+// ---------- verification banner ----------
+
+function VerificationBanner({
+  projectId,
+  onOpenPhotos,
+}: {
+  projectId: string;
+  onOpenPhotos: () => void;
+}) {
+  const milestone = useCurrentMilestone(projectId);
+  const photos = usePhotos(projectId);
+
+  if (!milestone.data) return null;
+  const m = milestone.data;
+  if (m.status === "verified" || m.status === "rejected") return null;
+
+  const now = new Date();
+  const start = new Date(m.plannedStartDate);
+  const end = new Date(m.plannedCompletionDate);
+  const daysUntilStart = Math.ceil(
+    (start.getTime() - now.getTime()) / 86_400_000,
+  );
+  const daysPastEnd = Math.ceil(
+    (now.getTime() - end.getTime()) / 86_400_000,
+  );
+  const photoCount = photos.data?.length ?? 0;
+
+  let tone: "accent" | "warn" | "danger" | "muted";
+  let eyebrow: string;
+  let heading: string;
+  let copy: string;
+
+  if (daysUntilStart > 0) {
+    tone = "muted";
+    eyebrow = "Upcoming";
+    heading = `Milestone ${m.sequence.toString().padStart(2, "0")} · ${m.name}`;
+    copy = `Window opens in ${daysUntilStart} day${daysUntilStart === 1 ? "" : "s"}. You can stage photos early — they stay attached to the project.`;
+  } else if (daysPastEnd > 0) {
+    tone = "danger";
+    eyebrow = "Overdue · verify now";
+    heading = `Milestone ${m.sequence.toString().padStart(2, "0")} · ${m.name}`;
+    copy = `Window closed ${daysPastEnd} day${daysPastEnd === 1 ? "" : "s"} ago. ${photoCount === 0 ? "No photos on file." : `${photoCount} photo${photoCount === 1 ? "" : "s"} on file.`} Capture outstanding shots immediately or the draw holds.`;
+  } else {
+    tone = photoCount === 0 ? "warn" : "accent";
+    eyebrow = "Verify needed";
+    heading = `Milestone ${m.sequence.toString().padStart(2, "0")} · ${m.name}`;
+    const daysLeft = Math.max(
+      1,
+      Math.ceil((end.getTime() - now.getTime()) / 86_400_000),
+    );
+    copy =
+      photoCount === 0
+        ? `Window open · ${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining. No photos uploaded. The bank won't release $${m.trancheAmount.toLocaleString()} without capture.`
+        : `Window open · ${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining. ${photoCount} photo${photoCount === 1 ? "" : "s"} in so far — verify shot list coverage on the Photos tab.`;
+  }
+
+  const accent =
+    tone === "danger"
+      ? "border-danger"
+      : tone === "warn"
+        ? "border-warn"
+        : tone === "accent"
+          ? "border-accent"
+          : "border-line-strong";
+  const eyebrowCls =
+    tone === "danger"
+      ? "text-danger"
+      : tone === "warn"
+        ? "text-warn"
+        : tone === "accent"
+          ? "text-accent"
+          : "text-fg-dim";
+
+  return (
+    <div
+      className={cn(
+        "relative flex flex-wrap items-start justify-between gap-6 border border-line-strong bg-bg-1 p-6 lg:p-7",
+      )}
+    >
+      <div
+        aria-hidden
+        className={cn("absolute inset-y-0 left-0 w-0.5", accent)}
+      />
+      <div className="max-w-2xl">
+        <div
+          className={cn(
+            "inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em]",
+            eyebrowCls,
+          )}
+        >
+          <span aria-hidden className={cn("inline-block h-1.5 w-1.5", accent.replace("border-", "bg-"))} />
+          {eyebrow}
+        </div>
+        <h3 className="mt-3 text-[22px] font-extrabold leading-tight tracking-[-0.02em] text-fg">
+          {heading}
+        </h3>
+        <p className="mt-2 text-[13px] leading-[1.55] text-fg-dim">{copy}</p>
+        <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
+          <span>{m.plannedStartDate.slice(0, 10)}</span>
+          <span>↓</span>
+          <span>{m.plannedCompletionDate.slice(0, 10)}</span>
+          <span>· tranche ${m.trancheAmount.toLocaleString()}</span>
+          <span>· release {m.plannedReleasePct}%</span>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onOpenPhotos}
+        className="inline-flex shrink-0 items-center gap-2.5 bg-accent px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
+      >
+        Open Photos ↗
+      </button>
+    </div>
   );
 }
 
