@@ -11,14 +11,18 @@ import { useParams } from "react-router-dom";
 import { Chapter } from "@/components/blocks/Chapter";
 import { Container } from "@/components/layout/Container";
 import { Nav } from "@/components/layout/Nav";
-import type { ClassifiedSheet, Discipline } from "@/lib/types";
+import {
+  DISCIPLINE_LABEL,
+  type ClassifiedSheet,
+  type Discipline,
+} from "@/lib/types";
 import { useFinancePlan } from "@/services/financePlan";
 import { usePlanClassification, usePlans } from "@/services/plans";
 import { useProject } from "@/services/projects";
 import { useGanttStore } from "@/stores/ganttStore";
 
 import { ActionBar } from "@/routes/gantt/ActionBar";
-import type { ChipData } from "@/routes/gantt/DocChip";
+import { sheetKey, type ChipData } from "@/routes/gantt/DocChip";
 import { Palette } from "@/routes/gantt/Palette";
 import { SidePanel } from "@/routes/gantt/SidePanel";
 import { Timeline } from "@/routes/gantt/Timeline";
@@ -71,7 +75,10 @@ export default function GanttBuilder() {
     addDocRef(localId, {
       documentId: data.documentId,
       sheetLabels: data.sheetLabel ? [data.sheetLabel] : undefined,
-      notes: `${data.discipline}:p${data.pageNumber}`,
+      notes: sheetKey({
+        documentId: data.documentId,
+        pageNumber: data.pageNumber,
+      }),
     });
   }
 
@@ -81,6 +88,12 @@ export default function GanttBuilder() {
   );
 
   const sheets: ClassifiedSheet[] = classification.data?.sheets ?? [];
+
+  const sheetLookup = useMemo(() => {
+    const m = new Map<string, ClassifiedSheet>();
+    for (const s of sheets) m.set(sheetKey(s), s);
+    return m;
+  }, [sheets]);
 
   const byDiscipline = useMemo(() => {
     const m = new Map<Discipline, number>();
@@ -136,7 +149,7 @@ export default function GanttBuilder() {
                       aria-hidden
                       className={`inline-block h-2 w-2 ${disciplineDot(d)}`}
                     />
-                    {d} · {n}
+                    {DISCIPLINE_LABEL[d]} · {n}
                   </span>
                 ))}
               </div>
@@ -144,8 +157,8 @@ export default function GanttBuilder() {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr_320px]">
               <Palette sheets={sheets} />
-              <Timeline />
-              <SidePanel />
+              <Timeline sheetLookup={sheetLookup} />
+              <SidePanel sheetLookup={sheetLookup} />
             </div>
 
             <ActionBar

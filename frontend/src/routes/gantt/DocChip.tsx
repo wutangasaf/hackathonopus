@@ -1,6 +1,11 @@
 import { useDraggable } from "@dnd-kit/core";
 
-import type { ClassifiedSheet, Discipline } from "@/lib/types";
+import {
+  SHEET_ROLE_LABEL,
+  formatSheetChip,
+  type ClassifiedSheet,
+  type Discipline,
+} from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 export const DISCIPLINE_DOT: Record<Discipline, string> = {
@@ -13,10 +18,18 @@ export const DISCIPLINE_DOT: Record<Discipline, string> = {
 export type ChipData = {
   kind: "planSheet";
   documentId: string;
+  pageNumber: number;
   sheetLabel?: string;
   discipline: Discipline;
-  pageNumber: number;
+  sheetRole: ClassifiedSheet["sheetRole"];
+  chipNote?: string;
 };
+
+export function sheetKey(
+  s: Pick<ClassifiedSheet, "documentId" | "pageNumber">,
+): string {
+  return `${s.documentId}:${s.pageNumber}`;
+}
 
 export function DocChip({
   sheet,
@@ -28,9 +41,11 @@ export function DocChip({
   const data: ChipData = {
     kind: "planSheet",
     documentId: sheet.documentId,
+    pageNumber: sheet.pageNumber,
     sheetLabel: sheet.titleblock?.sheetLabel,
     discipline: sheet.discipline,
-    pageNumber: sheet.pageNumber,
+    sheetRole: sheet.sheetRole,
+    chipNote: sheet.notes,
   };
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id, data });
@@ -41,10 +56,13 @@ export function DocChip({
       }
     : undefined;
 
+  const primary = sheet.titleblock?.sheetLabel ?? `p.${sheet.pageNumber}`;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
+      title={`${formatSheetChip(sheet)}${sheet.notes ? " · " + sheet.notes : ""}`}
       {...listeners}
       {...attributes}
       className={cn(
@@ -58,10 +76,10 @@ export function DocChip({
         className={cn("inline-block h-2 w-2", DISCIPLINE_DOT[sheet.discipline])}
       />
       <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg">
-        {sheet.titleblock?.sheetLabel ?? `p.${sheet.pageNumber}`}
+        {primary}
       </span>
       <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
-        {sheet.sheetRole.replace(/_/g, " ")}
+        {SHEET_ROLE_LABEL[sheet.sheetRole]}
       </span>
     </div>
   );

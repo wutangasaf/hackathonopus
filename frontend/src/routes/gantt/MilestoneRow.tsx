@@ -1,9 +1,11 @@
 import { useDroppable } from "@dnd-kit/core";
 import { differenceInDays } from "date-fns";
 
-import type { Discipline } from "@/lib/types";
+import { SHEET_ROLE_LABEL, type ClassifiedSheet, type Discipline } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useGanttStore } from "@/stores/ganttStore";
+
+import { DISCIPLINE_DOT } from "@/routes/gantt/DocChip";
 
 export function MilestoneRow({
   localId,
@@ -11,12 +13,14 @@ export function MilestoneRow({
   totalDays,
   selected,
   onSelect,
+  sheetLookup,
 }: {
   localId: string;
   kickoff: Date;
   totalDays: number;
   selected: boolean;
   onSelect: () => void;
+  sheetLookup: Map<string, ClassifiedSheet>;
 }) {
   const milestone = useGanttStore((s) =>
     s.milestones.find((m) => m.localId === localId),
@@ -64,9 +68,7 @@ export function MilestoneRow({
 
       {/* Timeline column */}
       <div className="relative px-2 py-3">
-        {/* Track */}
         <div aria-hidden className="absolute inset-x-2 top-1/2 h-px bg-bg-3" />
-        {/* Bar */}
         <div
           className={cn(
             "absolute top-1/2 h-5 -translate-y-1/2 border",
@@ -86,26 +88,40 @@ export function MilestoneRow({
         {milestone.planDocRefs.length > 0 && (
           <div className="relative mt-9 flex flex-wrap gap-[6px]">
             {milestone.planDocRefs.map((ref) => {
-              const discipline =
-                (ref.notes?.split(":")[0] as Discipline | undefined) ??
-                "ARCHITECTURE";
+              const sheet = ref.notes ? sheetLookup.get(ref.notes) : undefined;
+              const primary =
+                ref.sheetLabels?.[0] ??
+                sheet?.titleblock?.sheetLabel ??
+                (sheet ? `p.${sheet.pageNumber}` : `…${ref.documentId.slice(-4)}`);
+              const role = sheet ? SHEET_ROLE_LABEL[sheet.sheetRole] : null;
+              const discipline: Discipline | undefined = sheet?.discipline;
               return (
                 <button
-                  key={ref.documentId}
+                  key={`${ref.documentId}-${primary}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     removeDocRef(localId, ref.documentId);
                   }}
+                  title={
+                    sheet
+                      ? `${discipline} · ${role}${sheet.notes ? " · " + sheet.notes : ""}`
+                      : undefined
+                  }
                   className="group flex items-center gap-1.5 border border-line-strong bg-bg-1 px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim transition-colors hover:border-danger/50 hover:text-danger"
                 >
-                  <span
-                    aria-hidden
-                    className={cn(
-                      "inline-block h-1.5 w-1.5",
-                      disciplineDot(discipline),
-                    )}
-                  />
-                  {ref.sheetLabels?.[0] ?? "p." + ref.documentId.slice(-4)}
+                  {discipline && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "inline-block h-1.5 w-1.5",
+                        DISCIPLINE_DOT[discipline],
+                      )}
+                    />
+                  )}
+                  <span className="text-fg">{primary}</span>
+                  {role && (
+                    <span className="text-fg-muted">· {role}</span>
+                  )}
                   <span className="opacity-0 transition-opacity group-hover:opacity-100">
                     ×
                   </span>
@@ -117,17 +133,4 @@ export function MilestoneRow({
       </div>
     </div>
   );
-}
-
-function disciplineDot(d: Discipline): string {
-  switch (d) {
-    case "ARCHITECTURE":
-      return "bg-warn";
-    case "STRUCTURAL":
-      return "bg-accent";
-    case "ELECTRICAL":
-      return "bg-success";
-    case "PLUMBING":
-      return "bg-danger";
-  }
 }

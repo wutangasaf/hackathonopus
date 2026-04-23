@@ -1,12 +1,25 @@
+import {
+  SHEET_ROLE_LABEL,
+  type ClassifiedSheet,
+  type Discipline,
+} from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { useGanttStore } from "@/stores/ganttStore";
 
-export function SidePanel() {
+import { DISCIPLINE_DOT } from "@/routes/gantt/DocChip";
+
+export function SidePanel({
+  sheetLookup,
+}: {
+  sheetLookup: Map<string, ClassifiedSheet>;
+}) {
   const milestone = useGanttStore((s) =>
     s.selectedLocalId
       ? s.milestones.find((m) => m.localId === s.selectedLocalId)
       : undefined,
   );
   const setMilestoneField = useGanttStore((s) => s.setMilestoneField);
+  const removeDocRef = useGanttStore((s) => s.removeDocRef);
 
   if (!milestone) {
     return (
@@ -123,22 +136,60 @@ export function SidePanel() {
 
       <div>
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-dim">
-          Pinned plan pages
+          Pinned plan pages · {milestone.planDocRefs.length}
         </div>
         {milestone.planDocRefs.length === 0 ? (
           <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
             Drag chips from the palette onto this row.
           </p>
         ) : (
-          <ul className="mt-2 flex flex-col gap-1">
-            {milestone.planDocRefs.map((r) => (
-              <li
-                key={r.documentId}
-                className="font-mono text-[11px] uppercase tracking-[0.12em] text-fg-dim"
-              >
-                {r.sheetLabels?.join(" · ") ?? r.documentId.slice(-8)}
-              </li>
-            ))}
+          <ul className="mt-2 flex flex-col gap-[2px] bg-[var(--line)]">
+            {milestone.planDocRefs.map((ref) => {
+              const sheet = ref.notes ? sheetLookup.get(ref.notes) : undefined;
+              const primary =
+                ref.sheetLabels?.[0] ??
+                sheet?.titleblock?.sheetLabel ??
+                (sheet ? `p.${sheet.pageNumber}` : `…${ref.documentId.slice(-4)}`);
+              const role = sheet ? SHEET_ROLE_LABEL[sheet.sheetRole] : null;
+              const discipline: Discipline | undefined = sheet?.discipline;
+              return (
+                <li
+                  key={`${ref.documentId}-${primary}`}
+                  className="group flex items-start gap-2 bg-bg px-3 py-2"
+                >
+                  {discipline && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "mt-1 inline-block h-1.5 w-1.5 flex-none",
+                        DISCIPLINE_DOT[discipline],
+                      )}
+                    />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="font-mono text-[11px] uppercase tracking-[0.12em] text-fg">
+                      {primary}
+                      {role && (
+                        <span className="text-fg-muted"> · {role}</span>
+                      )}
+                    </div>
+                    {sheet?.notes && (
+                      <div className="mt-1 text-[11px] leading-[1.45] text-fg-muted">
+                        {sheet.notes}
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeDocRef(milestone.localId, ref.documentId)}
+                    className="self-start font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted transition-colors hover:text-danger"
+                    aria-label="Remove pinned page"
+                  >
+                    Remove
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>

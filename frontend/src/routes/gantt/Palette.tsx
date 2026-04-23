@@ -1,9 +1,13 @@
 import { useMemo } from "react";
 
-import type { ClassifiedSheet, Discipline } from "@/lib/types";
-import { DISCIPLINES } from "@/lib/types";
+import {
+  DISCIPLINE_LABEL,
+  DISCIPLINES,
+  type ClassifiedSheet,
+  type Discipline,
+} from "@/lib/types";
 
-import { DocChip } from "@/routes/gantt/DocChip";
+import { DocChip, sheetKey } from "@/routes/gantt/DocChip";
 
 export function Palette({ sheets }: { sheets: ClassifiedSheet[] }) {
   const grouped = useMemo(() => {
@@ -12,6 +16,15 @@ export function Palette({ sheets }: { sheets: ClassifiedSheet[] }) {
     for (const s of sheets) {
       const list = m.get(s.discipline);
       if (list) list.push(s);
+    }
+    // Sort each discipline group by sheet label (if present) then page.
+    for (const [, list] of m) {
+      list.sort((a, b) => {
+        const la = a.titleblock?.sheetLabel ?? "";
+        const lb = b.titleblock?.sheetLabel ?? "";
+        if (la && lb && la !== lb) return la.localeCompare(lb);
+        return a.pageNumber - b.pageNumber;
+      });
     }
     return m;
   }, [sheets]);
@@ -31,7 +44,7 @@ export function Palette({ sheets }: { sheets: ClassifiedSheet[] }) {
         return (
           <section key={d}>
             <div className="mb-2 font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
-              {d} · {list.length}
+              {DISCIPLINE_LABEL[d]} · {list.length}
             </div>
             {list.length === 0 ? (
               <div className="border border-dashed border-line px-2.5 py-2 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
@@ -40,11 +53,7 @@ export function Palette({ sheets }: { sheets: ClassifiedSheet[] }) {
             ) : (
               <div className="flex flex-col gap-[6px]">
                 {list.map((s) => (
-                  <DocChip
-                    key={`${s.documentId}-${s.pageNumber}`}
-                    id={`chip:${s.documentId}:${s.pageNumber}`}
-                    sheet={s}
-                  />
+                  <DocChip key={sheetKey(s)} id={`chip:${sheetKey(s)}`} sheet={s} />
                 ))}
               </div>
             )}

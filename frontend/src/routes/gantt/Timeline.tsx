@@ -1,10 +1,15 @@
 import { differenceInDays, format } from "date-fns";
 
+import type { ClassifiedSheet } from "@/lib/types";
 import { useGanttStore } from "@/stores/ganttStore";
 
 import { MilestoneRow } from "@/routes/gantt/MilestoneRow";
 
-export function Timeline() {
+export function Timeline({
+  sheetLookup,
+}: {
+  sheetLookup: Map<string, ClassifiedSheet>;
+}) {
   const kickoffDate = useGanttStore((s) => s.kickoffDate);
   const requiredCompletionDate = useGanttStore(
     (s) => s.requiredCompletionDate,
@@ -15,12 +20,8 @@ export function Timeline() {
 
   const kickoff = new Date(kickoffDate);
   const completion = new Date(requiredCompletionDate);
-  const totalDays = Math.max(
-    1,
-    differenceInDays(completion, kickoff),
-  );
+  const totalDays = Math.max(1, differenceInDays(completion, kickoff));
 
-  // 5 evenly-spaced tick marks for the date axis.
   const ticks = Array.from({ length: 5 }).map((_, i) => {
     const t = kickoff.getTime() + (totalDays * 86_400_000 * i) / 4;
     return new Date(t);
@@ -28,7 +29,6 @@ export function Timeline() {
 
   return (
     <div className="border border-line bg-bg">
-      {/* Header / date axis */}
       <div className="grid grid-cols-[200px_1fr] border-b border-line-strong bg-bg-1">
         <div className="px-4 py-3 font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted">
           Milestone
@@ -54,6 +54,7 @@ export function Timeline() {
           totalDays={totalDays}
           selected={m.localId === selectedLocalId}
           onSelect={() => select(m.localId)}
+          sheetLookup={sheetLookup}
         />
       ))}
     </div>
