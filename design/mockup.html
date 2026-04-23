@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Plumbline — design reference</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --bg-1: #111;
+    --bg-2: #161616;
+    --bg-3: #1d1d1d;
+    --fg: #f5f5f5;
+    --fg-dim: #8a8a8a;
+    --fg-muted: #555;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.18);
+    --accent: #ff6b1a;
+    --success: #00d97e;
+    --warn: #ffb800;
+    --danger: #ff3b30;
+    --mono: ui-monospace, "SFMono-Regular", "JetBrains Mono", Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    line-height: 1.35;
+  }
+  ::selection { background: var(--accent); color: #000; }
+
+  a { color: inherit; text-decoration: none; }
+  ul { list-style: none; }
+
+  .container { max-width: 1280px; margin: 0 auto; padding: 0 32px; }
+
+  /* --- Typography utilities --- */
+  .mono { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--fg-dim);
+  }
+  .eyebrow::before {
+    content: ""; width: 6px; height: 6px; background: var(--accent);
+  }
+  .num {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--fg-muted);
+  }
+
+  /* --- Navigation --- */
+  nav.top {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(10, 10, 10, 0.82);
+    backdrop-filter: saturate(160%) blur(12px);
+    -webkit-backdrop-filter: saturate(160%) blur(12px);
+    border-bottom: 1px solid var(--line);
+  }
+  nav.top .inner {
+    display: flex; justify-content: space-between; align-items: center;
+    height: 64px; max-width: 1280px; margin: 0 auto; padding: 0 32px;
+  }
+  .brand {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 13px; font-weight: 700;
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .brand .mark {
+    display: inline-block; width: 3px; height: 14px; background: var(--accent);
+    box-shadow: 0 0 12px rgba(255, 107, 26, 0.4);
+  }
+  nav.top ul {
+    display: flex; gap: 40px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  nav.top a { color: var(--fg-dim); transition: color 0.2s; }
+  nav.top a:hover { color: var(--fg); }
+  nav.top .cta { color: var(--fg); border-bottom: 1px solid var(--accent); padding-bottom: 2px; }
+
+  /* --- Hero --- */
+  section.hero {
+    position: relative; overflow: hidden;
+    padding: 120px 0 160px;
+    border-bottom: 1px solid var(--line);
+  }
+  .hero-grid {
+    display: grid; grid-template-columns: 1.35fr 1fr; gap: 64px; align-items: end;
+  }
+  .hero-headline {
+    font-size: clamp(56px, 10.5vw, 168px);
+    font-weight: 900; letter-spacing: -0.055em;
+    line-height: 0.86;
+  }
+  .hero-headline .accent { color: var(--accent); }
+  .hero-sub {
+    margin-top: 28px;
+    font-size: clamp(16px, 1.5vw, 20px);
+    line-height: 1.45; color: var(--fg-dim);
+    max-width: 540px;
+  }
+  .hero-meta {
+    display: flex; gap: 48px; margin-top: 56px;
+    padding-top: 24px; border-top: 1px solid var(--line);
+  }
+  .hero-meta .stat .v {
+    font-family: var(--mono); font-size: 28px; font-weight: 600;
+    letter-spacing: -0.02em; color: var(--fg);
+  }
+  .hero-meta .stat .k { margin-top: 4px; color: var(--fg-muted); }
+
+  .btn-row { display: flex; gap: 16px; margin-top: 48px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+    padding: 14px 26px; font-family: var(--mono); font-size: 11px;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em;
+    border: 1px solid transparent; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #ff8940; box-shadow: 0 0 0 3px rgba(255, 107, 26, 0.15); }
+  .btn-ghost { color: var(--fg); border-color: var(--line-strong); }
+  .btn-ghost:hover { background: var(--bg-1); border-color: var(--fg-dim); }
+  .btn .arrow { display: inline-block; transform: translateY(-1px); }
+
+  /* Decorative block-wall on the hero right side */
+  .wall {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-auto-rows: 38px;
+    gap: 2px;
+    max-width: 420px;
+    align-self: end;
+    justify-self: end;
+  }
+  .wall .b {
+    background: var(--bg-2);
+    border: 1px solid var(--line);
+  }
+  .wall .b.on  { background: var(--accent); border-color: var(--accent); }
+  .wall .b.mid { background: var(--bg-3); }
+  .wall .b.hi  { background: #2a2a2a; }
+  .wall .b.glow { animation: glow 3.6s ease-in-out infinite; }
+  @keyframes glow {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  /* --- Section header pattern --- */
+  .section { padding: 120px 0; border-bottom: 1px solid var(--line); }
+  .section-head {
+    display: grid; grid-template-columns: 1fr 2fr; gap: 48px; margin-bottom: 64px;
+    align-items: start;
+  }
+  .section-head h2 {
+    font-size: clamp(32px, 4.5vw, 64px); font-weight: 800;
+    letter-spacing: -0.035em; line-height: 1;
+  }
+  .section-head .lead {
+    font-size: 17px; line-height: 1.55; color: var(--fg-dim);
+  }
+
+  /* --- "Three inputs" cards --- */
+  .inputs-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;
+    background: var(--line);
+  }
+  .input-card {
+    background: var(--bg); padding: 40px 32px; min-height: 320px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; transition: background 0.25s;
+  }
+  .input-card:hover { background: var(--bg-1); }
+  .input-card .top { display: flex; justify-content: space-between; align-items: flex-start; }
+  .input-card h3 {
+    font-size: 32px; font-weight: 800; letter-spacing: -0.02em;
+    line-height: 1.05; margin-top: 48px;
+  }
+  .input-card p {
+    margin-top: 16px; color: var(--fg-dim);
+    font-size: 14px; line-height: 1.55;
+  }
+  .input-card .cadence {
+    margin-top: 32px; font-family: var(--mono); font-size: 10px;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-muted);
+  }
+  .chip {
+    display: inline-block; padding: 4px 10px; border: 1px solid var(--line-strong);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--fg-dim);
+  }
+
+  /* --- Pipeline (7 agents) --- */
+  .pipeline {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    background: var(--line);
+    position: relative;
+  }
+  .agent {
+    background: var(--bg); padding: 28px 20px; min-height: 200px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    transition: background 0.2s;
+  }
+  .agent:hover { background: var(--bg-1); }
+  .agent .n { font-family: var(--mono); font-size: 11px; color: var(--accent); letter-spacing: 0.12em; }
+  .agent h4 { font-size: 14px; font-weight: 700; letter-spacing: -0.01em; margin-top: 18px; line-height: 1.25; }
+  .agent p { margin-top: 12px; font-size: 12px; color: var(--fg-muted); line-height: 1.5; }
+  .agent .kind {
+    margin-top: auto; padding-top: 16px; border-top: 1px solid var(--line);
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--fg-muted);
+  }
+  .agent .kind .dot { display: inline-block; width: 6px; height: 6px; background: var(--success); margin-right: 6px; vertical-align: middle; }
+  .agent .kind.text .dot { background: var(--accent); }
+  .agent .kind.vision .dot { background: var(--warn); }
+
+  /* --- Gap Report preview --- */
+  .report-wrap {
+    background: var(--bg-1); border: 1px solid var(--line);
+    padding: 40px;
+  }
+  .report-head {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    gap: 24px; padding-bottom: 28px; border-bottom: 1px solid var(--line);
+  }
+  .report-head h3 {
+    font-size: 22px; font-weight: 700; letter-spacing: -0.015em;
+  }
+  .report-head .meta { margin-top: 10px; display: flex; gap: 24px; }
+  .report-head .meta div { font-family: var(--mono); font-size: 11px; color: var(--fg-dim); letter-spacing: 0.08em; }
+  .report-head .meta b { color: var(--fg); font-weight: 500; }
+
+  .verdict {
+    display: flex; flex-direction: column; align-items: flex-end; gap: 6px;
+    min-width: 280px;
+  }
+  .verdict .label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--fg-dim); }
+  .verdict .tag {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.14em;
+    text-transform: uppercase; padding: 6px 14px;
+    background: rgba(0, 217, 126, 0.12); color: var(--success);
+    border: 1px solid rgba(0, 217, 126, 0.35);
+  }
+  .verdict .tag.dispute {
+    background: rgba(255, 59, 48, 0.12); color: var(--danger);
+    border-color: rgba(255, 59, 48, 0.35);
+  }
+  .verdict .amount {
+    font-size: 44px; font-weight: 800; letter-spacing: -0.03em;
+    margin-top: 4px;
+  }
+
+  .report-body {
+    display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px;
+    padding-top: 32px;
+  }
+
+  /* Matrix */
+  .matrix-label { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 16px; }
+  .matrix-label h4 { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; }
+  .legend { display: flex; gap: 14px; }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--fg-dim); }
+  .legend i { width: 10px; height: 10px; display: inline-block; }
+  .legend .ok { background: var(--success); }
+  .legend .partial { background: var(--warn); }
+  .legend .dev { background: var(--danger); }
+  .legend .miss { background: repeating-linear-gradient(45deg, var(--fg-muted), var(--fg-muted) 2px, transparent 2px, transparent 5px); border: 1px solid var(--fg-muted); }
+
+  .matrix {
+    display: grid;
+    grid-template-columns: 90px repeat(6, 1fr);
+    gap: 2px;
+    background: var(--line);
+    padding: 1px;
+  }
+  .matrix .h {
+    background: var(--bg-1); padding: 8px 6px;
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--fg-muted);
+  }
+  .matrix .h.row { text-align: right; padding-right: 14px; align-self: center; }
+  .matrix .h.col { text-align: center; }
+  .matrix .cell {
+    background: var(--bg-2); aspect-ratio: 1;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 10px; color: var(--fg); font-weight: 600;
+    cursor: pointer; transition: transform 0.15s;
+  }
+  .matrix .cell:hover { transform: scale(1.08); z-index: 2; position: relative; }
+  .cell.ok      { background: rgba(0, 217, 126, 0.85); color: #003d24; }
+  .cell.partial { background: rgba(255, 184, 0, 0.8); color: #3d2d00; }
+  .cell.dev     { background: rgba(255, 59, 48, 0.85); color: #3d0000; }
+  .cell.miss    { background: transparent; border: 1px dashed var(--fg-muted); color: var(--fg-muted); }
+  .cell.na      { background: var(--bg-1); opacity: 0.3; }
+
+  /* Side panel */
+  .side-panel h4 { font-size: 13px; font-weight: 600; margin-bottom: 16px; letter-spacing: 0.02em; }
+  .deviation-list { display: flex; flex-direction: column; gap: 2px; background: var(--line); }
+  .dev-row {
+    background: var(--bg); padding: 14px 16px;
+    display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: start;
+  }
+  .dev-row .badge {
+    font-family: var(--mono); font-size: 9px; letter-spacing: 0.12em;
+    padding: 2px 8px; background: rgba(255, 59, 48, 0.14); color: var(--danger);
+    border: 1px solid rgba(255, 59, 48, 0.4); text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .dev-row .body .t { font-size: 13px; font-weight: 500; line-height: 1.4; }
+  .dev-row .body .d { margin-top: 4px; font-size: 12px; color: var(--fg-muted); line-height: 1.5; }
+  .dev-row .cite { font-family: var(--mono); font-size: 10px; color: var(--fg-dim); letter-spacing: 0.06em; white-space: nowrap; }
+
+  .narrative {
+    margin-top: 32px; padding: 20px 24px;
+    background: var(--bg); border-left: 2px solid var(--accent);
+  }
+  .narrative .label { font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--fg-dim); margin-bottom: 8px; }
+  .narrative p { font-size: 14px; line-height: 1.6; color: var(--fg); }
+
+  /* --- Footer --- */
+  footer {
+    padding: 80px 0 40px;
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em;
+    color: var(--fg-muted);
+  }
+  footer .inner { display: flex; justify-content: space-between; align-items: center; }
+  footer a { color: var(--fg-dim); }
+
+  /* --- Responsive --- */
+  @media (max-width: 960px) {
+    .hero-grid { grid-template-columns: 1fr; }
+    .wall { display: none; }
+    .inputs-grid { grid-template-columns: 1fr; }
+    .pipeline { grid-template-columns: repeat(2, 1fr); }
+    .report-body { grid-template-columns: 1fr; }
+    .section-head { grid-template-columns: 1fr; gap: 24px; }
+    .matrix { grid-template-columns: 70px repeat(6, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<nav class="top">
+  <div class="inner">
+    <div class="brand"><span class="mark"></span>Plumbline</div>
+    <ul>
+      <li><a href="#inputs">Inputs</a></li>
+      <li><a href="#pipeline">Pipeline</a></li>
+      <li><a href="#report">Report</a></li>
+      <li><a class="cta" href="#">Open app</a></li>
+    </ul>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="container hero-grid">
+    <div>
+      <div class="eyebrow">Built with Opus 4.7 · Apr 2026</div>
+      <h1 class="hero-headline">Build<br/>to <span class="accent">plan</span>.<br/>Release<br/>on <span class="accent">proof</span>.</h1>
+      <p class="hero-sub">
+        AI co-pilot for bank-financed construction. Upload approved plans,
+        the finance plan with milestones, and phone photos.
+        Plumbline produces the draw verdict — citing G703 line items,
+        flagging unapproved deviations — in minutes, not weeks.
+      </p>
+      <div class="btn-row">
+        <a href="#" class="btn btn-primary">Start a project <span class="arrow">↗</span></a>
+        <a href="#pipeline" class="btn btn-ghost">See the pipeline</a>
+      </div>
+      <div class="hero-meta">
+        <div class="stat"><div class="v">7</div><div class="k mono">Agents, end-to-end</div></div>
+        <div class="stat"><div class="v">4</div><div class="k mono">Disciplines read</div></div>
+        <div class="stat"><div class="v">&lt;60s</div><div class="k mono">Report latency</div></div>
+      </div>
+    </div>
+    <div class="wall" aria-hidden="true">
+      <!-- Stacked bricks; "on" cells light in the brand color to read as a building silhouette -->
+      <div class="b"></div><div class="b hi"></div><div class="b"></div><div class="b"></div><div class="b mid"></div><div class="b"></div><div class="b"></div><div class="b"></div>
+      <div class="b mid"></div><div class="b"></div><div class="b"></div><div class="b on glow"></div><div class="b"></div><div class="b hi"></div><div class="b"></div><div class="b mid"></div>
+      <div class="b"></div><div class="b hi"></div><div class="b mid"></div><div class="b"></div><div class="b"></div><div class="b"></div><div class="b on glow"></div><div class="b"></div>
+      <div class="b"></div><div class="b"></div><div class="b"></div><div class="b mid"></div><div class="b on"></div><div class="b hi"></div><div class="b"></div><div class="b"></div>
+      <div class="b mid"></div><div class="b"></div><div class="b on"></div><div class="b"></div><div class="b"></div><div class="b mid"></div><div class="b"></div><div class="b hi"></div>
+      <div class="b"></div><div class="b on glow"></div><div class="b"></div><div class="b hi"></div><div class="b mid"></div><div class="b"></div><div class="b"></div><div class="b"></div>
+      <div class="b hi"></div><div class="b"></div><div class="b"></div><div class="b mid"></div><div class="b"></div><div class="b"></div><div class="b on"></div><div class="b mid"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ INPUTS ============ -->
+<section id="inputs" class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">01 · Inputs</div>
+        <h2>Three inputs.<br/>One verdict.</h2>
+      </div>
+      <div class="lead">
+        Every Plumbline verdict is the composition of three things — the plans
+        the bank pinned to the loan, the finance plan that prices them, and
+        the imagery that proves them. Each arrives on its own cadence.
+      </div>
+    </div>
+    <div class="inputs-grid">
+      <div class="input-card">
+        <div class="top">
+          <div class="num">01</div>
+          <span class="chip">PDF · slow</span>
+        </div>
+        <div>
+          <h3>Construction plans</h3>
+          <p>Architectural, structural, electrical, plumbing drawings. Agent 1 classifies pages; Agent 2 extracts a discipline-shaped format that photos can later match.</p>
+        </div>
+        <div class="cadence">Once at loan origination · Versioned on CO</div>
+      </div>
+      <div class="input-card">
+        <div class="top">
+          <div class="num">02</div>
+          <span class="chip">G703 · slow</span>
+        </div>
+        <div>
+          <h3>Finance plan</h3>
+          <p>Schedule of Values with milestones tied to required completion per discipline. Agent 3 parses line items + draws. Each milestone gates a dollar release.</p>
+        </div>
+        <div class="cadence">Once at loan origination · Amended on CO</div>
+      </div>
+      <div class="input-card">
+        <div class="top">
+          <div class="num">03</div>
+          <span class="chip">IMG · live</span>
+        </div>
+        <div>
+          <h3>Jobsite imagery</h3>
+          <p>Phone photos from the builder, arriving monthly or continuously. Agent 5 gates quality; Agent 6 converts each photo into the plan's format for diffing.</p>
+        </div>
+        <div class="cadence">Monthly per draw · Continuous between</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PIPELINE ============ -->
+<section id="pipeline" class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">02 · Pipeline</div>
+        <h2>Seven narrow<br/>agents.</h2>
+      </div>
+      <div class="lead">
+        Each agent does one thing well, with strict tool-use schemas and full
+        token accounting. Four call Opus 4.7 vision; two are text-only. The
+        orchestration is deterministic; the reasoning is not.
+      </div>
+    </div>
+    <div class="pipeline">
+      <div class="agent">
+        <div><div class="n">01</div><h4>Plan Classifier</h4><p>Per-page discipline, sheet role, titleblock metadata.</p></div>
+        <div class="kind vision"><span class="dot"></span>Vision</div>
+      </div>
+      <div class="agent">
+        <div><div class="n">02</div><h4>Plan Format</h4><p>Per-discipline elements and inspector checklist.</p></div>
+        <div class="kind vision"><span class="dot"></span>Vision</div>
+      </div>
+      <div class="agent">
+        <div><div class="n">03</div><h4>Finance Plan</h4><p>SOV line items, milestones, draw requirements.</p></div>
+        <div class="kind vision"><span class="dot"></span>Vision</div>
+      </div>
+      <div class="agent">
+        <div><div class="n">04</div><h4>Photo Guidance</h4><p>Shot list keyed to the active milestone.</p></div>
+        <div class="kind text"><span class="dot"></span>Text</div>
+      </div>
+      <div class="agent">
+        <div><div class="n">05</div><h4>Photo Quality</h4><p>Gate: is this photo good enough, on-phase?</p></div>
+        <div class="kind vision"><span class="dot"></span>Vision</div>
+      </div>
+      <div class="agent">
+        <div><div class="n">06</div><h4>Photo → Format</h4><p>Convert the photo into the plan's format for diff.</p></div>
+        <div class="kind vision"><span class="dot"></span>Vision</div>
+      </div>
+      <div class="agent">
+        <div><div class="n">07</div><h4>Gap &amp; Verdict</h4><p>G703 rollup, deviations, APPROVE / DISPUTE.</p></div>
+        <div class="kind text"><span class="dot"></span>Text</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ GAP REPORT PREVIEW ============ -->
+<section id="report" class="section">
+  <div class="container">
+    <div class="section-head">
+      <div>
+        <div class="eyebrow">03 · The screen bankers want</div>
+        <h2>Verified. Cited.<br/>Signable.</h2>
+      </div>
+      <div class="lead">
+        The Gap Report is the one artifact the CRMC signs and the bank funds against.
+        Every cell cites photos. Every deviation carries a flag. Every verdict is
+        traceable to the evidence that produced it.
+      </div>
+    </div>
+
+    <div class="report-wrap">
+      <div class="report-head">
+        <div>
+          <h3>Potwine Passive House · Milestone 3 — Dry-in</h3>
+          <div class="meta">
+            <div>Report <b>GR-0042</b></div>
+            <div>As of <b>2026-07-15</b></div>
+            <div>Photos <b>13</b></div>
+            <div>Plan rev <b>v3</b></div>
+          </div>
+        </div>
+        <div class="verdict">
+          <span class="label">Draw verdict</span>
+          <span class="tag">Approve with conditions</span>
+          <span class="amount">$2,000,000</span>
+        </div>
+      </div>
+
+      <div class="report-body">
+        <!-- MATRIX -->
+        <div>
+          <div class="matrix-label">
+            <h4>Progress matrix · discipline × trade</h4>
+            <div class="legend">
+              <span><i class="ok"></i>Verified</span>
+              <span><i class="partial"></i>Partial</span>
+              <span><i class="dev"></i>Deviated</span>
+              <span><i class="miss"></i>Missing</span>
+            </div>
+          </div>
+          <div class="matrix">
+            <div class="h"></div>
+            <div class="h col">Foundation</div>
+            <div class="h col">Framing</div>
+            <div class="h col">Envelope</div>
+            <div class="h col">Roofing</div>
+            <div class="h col">MEP rough</div>
+            <div class="h col">Insulation</div>
+
+            <div class="h row">Architecture</div>
+            <div class="cell ok">100</div>
+            <div class="cell ok">100</div>
+            <div class="cell partial">78</div>
+            <div class="cell ok">100</div>
+            <div class="cell na"></div>
+            <div class="cell partial">45</div>
+
+            <div class="h row">Structural</div>
+            <div class="cell ok">100</div>
+            <div class="cell ok">100</div>
+            <div class="cell ok">95</div>
+            <div class="cell ok">100</div>
+            <div class="cell na"></div>
+            <div class="cell na"></div>
+
+            <div class="h row">Electrical</div>
+            <div class="cell na"></div>
+            <div class="cell na"></div>
+            <div class="cell na"></div>
+            <div class="cell na"></div>
+            <div class="cell dev">62</div>
+            <div class="cell miss">—</div>
+
+            <div class="h row">Plumbing</div>
+            <div class="cell ok">100</div>
+            <div class="cell na"></div>
+            <div class="cell na"></div>
+            <div class="cell na"></div>
+            <div class="cell partial">54</div>
+            <div class="cell miss">—</div>
+          </div>
+        </div>
+
+        <!-- SIDE PANEL -->
+        <div class="side-panel">
+          <h4>Flagged deviations (2)</h4>
+          <div class="deviation-list">
+            <div class="dev-row">
+              <span class="badge">Unapproved CO</span>
+              <div class="body">
+                <div class="t">Electrical service upgraded to 400A.</div>
+                <div class="d">Plan spec: 200A service drop (sheet E-101). Observed panel is 400A with sub-panels. No approved change order on file.</div>
+              </div>
+              <span class="cite">P-0472 · E-101</span>
+            </div>
+            <div class="dev-row">
+              <span class="badge">Deviation</span>
+              <div class="body">
+                <div class="t">Partition wall, L1 west, offset ~3 ft from plan.</div>
+                <div class="d">Framed wall location does not match A-201 layout. Impacts downstream MEP routing. Refer for CRMC review.</div>
+              </div>
+              <span class="cite">P-0481 · A-201</span>
+            </div>
+          </div>
+
+          <div class="narrative">
+            <div class="label">Narrative · CRMC draft</div>
+            <p>
+              Milestone 3 (Dry-in) is substantially complete against the plan with
+              two flagged deviations. Envelope finishes trail by ~22% against the
+              approved schedule but are within the 30-day cure window. The 400A
+              electrical upgrade requires formal change-order documentation before
+              the next draw. Recommending <b>approve with conditions</b>, release
+              $2.0M less 10% retainage, contingent on CO filing within 10 business days.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="container inner">
+    <div>PLUMBLINE · DESIGN REF · 2026-04-22</div>
+    <div><a href="#">GitHub ↗</a></div>
+  </div>
+</footer>
+
+</body>
+</html>
