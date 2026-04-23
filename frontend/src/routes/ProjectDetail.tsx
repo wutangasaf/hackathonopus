@@ -10,16 +10,17 @@ import { PhotosDropzone } from "@/components/uploads/PhotosDropzone";
 import { PipelineProgress } from "@/components/uploads/PipelineProgress";
 import { PlansDropzone } from "@/components/uploads/PlansDropzone";
 import { relativeTime } from "@/lib/time";
-import type {
-  AgentName,
-  AgentRun,
-  AgentRunStatus,
-  DocumentRecord,
-  FinancePlan,
-  GapReport,
-  PlanClassification,
-  Project,
-  ProjectStatus,
+import {
+  photoRawUrl,
+  type AgentName,
+  type AgentRun,
+  type AgentRunStatus,
+  type DocumentRecord,
+  type FinancePlan,
+  type GapReport,
+  type PlanClassification,
+  type Project,
+  type ProjectStatus,
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useFinancePlan, useCurrentMilestone } from "@/services/financePlan";
@@ -504,36 +505,69 @@ function PhotoGrid({
   return (
     <div className="grid grid-cols-2 gap-[2px] bg-[var(--line)] md:grid-cols-3 lg:grid-cols-4">
       {docs.map((d) => (
-        <Link
-          key={d._id}
-          to={`/projects/${projectId}/photos/${d._id}`}
-          className="group flex aspect-[4/3] flex-col justify-between bg-bg-1 p-4 transition-colors hover:bg-bg-2"
-        >
-          <div className="flex items-start justify-between">
-            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
-              {d.mimeType.replace("image/", "")}
-            </span>
-            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
-              …{d.sha256.slice(-6)}
-            </span>
-          </div>
-          <div>
-            <div
-              className="font-mono text-[36px] font-extrabold leading-none tracking-[-0.04em] text-fg-dim group-hover:text-accent"
-              aria-hidden
-            >
-              {d.originalFilename.charAt(0).toUpperCase() || "·"}
-            </div>
-            <div className="mt-3 truncate font-mono text-[11px] uppercase tracking-[0.12em] text-fg">
-              {d.originalFilename}
-            </div>
-            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
-              {relativeTime(d.serverReceivedAt)}
-            </div>
-          </div>
-        </Link>
+        <PhotoTile key={d._id} projectId={projectId} doc={d} />
       ))}
     </div>
+  );
+}
+
+function PhotoTile({
+  projectId,
+  doc,
+}: {
+  projectId: string;
+  doc: DocumentRecord;
+}) {
+  const hasGeo = Boolean(doc.exifMeta?.present && doc.exifMeta.gps);
+  const exifRecorded = doc.exifMeta?.present === true;
+  const exifMissing = doc.exifMeta?.present === false;
+
+  return (
+    <Link
+      to={`/projects/${projectId}/photos/${doc._id}`}
+      className="group relative block aspect-[4/3] overflow-hidden bg-bg-2 transition-opacity"
+    >
+      <img
+        src={photoRawUrl(projectId, doc._id)}
+        alt={doc.originalFilename}
+        loading="lazy"
+        className="absolute inset-0 h-full w-full object-cover transition-opacity group-hover:opacity-80"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.78)] via-transparent to-transparent"
+      />
+      <div className="absolute left-3 right-3 top-3 flex items-start justify-between">
+        <div className="flex gap-1">
+          {hasGeo && (
+            <span className="border border-success/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
+              Geo ✓
+            </span>
+          )}
+          {exifRecorded && !hasGeo && (
+            <span className="border border-line-strong bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-fg-dim">
+              Exif
+            </span>
+          )}
+          {exifMissing && (
+            <span className="border border-warn/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-warn">
+              No EXIF
+            </span>
+          )}
+        </div>
+        <span className="border border-line-strong bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.12em] text-fg-dim">
+          {doc.mimeType.replace("image/", "")}
+        </span>
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-3">
+        <div className="truncate font-mono text-[11px] uppercase tracking-[0.12em] text-fg">
+          {doc.originalFilename}
+        </div>
+        <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
+          {relativeTime(doc.serverReceivedAt)}
+        </div>
+      </div>
+    </Link>
   );
 }
 

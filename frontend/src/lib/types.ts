@@ -137,6 +137,15 @@ export type Project = {
   updatedAt: IsoDateString;
 };
 
+export type ExifMeta = {
+  present: boolean;
+  capturedAt?: IsoDateString;
+  gps?: { lat: number; lon: number; altitude?: number };
+  camera?: { make?: string; model?: string };
+  orientation?: number;
+  error?: string;
+};
+
 export type DocumentRecord = {
   _id: ObjectIdString;
   projectId: ObjectIdString;
@@ -147,10 +156,14 @@ export type DocumentRecord = {
   sha256: string;
   serverReceivedAt: IsoDateString;
   uploaderRef?: string;
-  exifMeta?: Record<string, unknown>;
+  exifMeta?: ExifMeta;
   createdAt: IsoDateString;
   updatedAt: IsoDateString;
 };
+
+export function photoRawUrl(projectId: string, photoId: string): string {
+  return `/api/projects/${projectId}/photos/${photoId}/raw`;
+}
 
 export type Titleblock = {
   sheetLabel?: string;
