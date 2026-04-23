@@ -1,4 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { type FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -20,17 +19,14 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { api, ApiError } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import { relativeTime } from "@/lib/time";
 import type { Project, ProjectStatus } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { useCreateProject, useProjects } from "@/services/projects";
 
 export default function Projects() {
-  const { data, isLoading, isError, error } = useQuery({
-    queryKey: ["projects"],
-    queryFn: api.listProjects,
-  });
-
+  const { data, isLoading, isError, error } = useProjects();
   const count = data?.length ?? 0;
 
   return (
@@ -196,26 +192,17 @@ function NewProjectDialog({
   const [formError, setFormError] = useState<string | null>(null);
 
   const navigate = useNavigate();
-  const qc = useQueryClient();
 
-  const mutation = useMutation({
-    mutationFn: api.createProject,
+  const mutation = useCreateProject({
     onSuccess: (project) => {
-      qc.invalidateQueries({ queryKey: ["projects"] });
       setOpen(false);
       setName("");
       setAddress("");
       setFormError(null);
       navigate(`/projects/${project._id}`);
     },
-    onError: (err: unknown) => {
-      if (err instanceof ApiError) {
-        setFormError(`${err.status} · ${err.body.slice(0, 160)}`);
-      } else if (err instanceof Error) {
-        setFormError(err.message);
-      } else {
-        setFormError("Failed to create project.");
-      }
+    onError: (err) => {
+      setFormError(`${err.status} · ${err.body.slice(0, 160)}`);
     },
   });
 
