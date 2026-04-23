@@ -46,8 +46,11 @@ export async function withAgentRun<T>(
 
   try {
     const result = await fn(ctx);
+    // CAS: only transition if still running. If an external actor (e.g. a DELETE
+    // handler) flipped the row to "failed" to signal cancellation, this update
+    // becomes a no-op and the cancellation state is preserved.
     await AgentRun.updateOne(
-      { _id: run._id },
+      { _id: run._id, status: "running" },
       {
         $set: {
           status: "succeeded",
@@ -60,7 +63,7 @@ export async function withAgentRun<T>(
     return { result, run };
   } catch (err) {
     await AgentRun.updateOne(
-      { _id: run._id },
+      { _id: run._id, status: "running" },
       {
         $set: {
           status: "failed",
