@@ -1,12 +1,11 @@
-import { Link, NavLink } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 import { Container } from "@/components/layout/Container";
-import { cn } from "@/lib/utils";
 
 const LINKS = [
-  { href: "/#inputs", label: "Inputs", anchor: true },
-  { href: "/#pipeline", label: "Pipeline", anchor: true },
-  { href: "/#report", label: "Report", anchor: true },
+  { href: "/#inputs", label: "Inputs" },
+  { href: "/#pipeline", label: "Pipeline" },
+  { href: "/#report", label: "Report" },
 ];
 
 export function Nav() {
@@ -17,13 +16,13 @@ export function Nav() {
           <span
             aria-hidden
             className="inline-block h-[14px] w-[3px] bg-accent"
-            style={{ boxShadow: "0 0 12px rgba(255, 107, 26, 0.4)" }}
+            style={{ boxShadow: "0 0 12px rgba(255, 107, 26, 0.55)" }}
           />
-          <span className="font-mono text-[13px] font-bold uppercase tracking-eyebrow">
+          <span className="font-mono text-[13px] font-bold uppercase tracking-[0.16em]">
             Plumbline
           </span>
         </Link>
-        <ul className="hidden items-center gap-10 font-mono text-[11px] uppercase tracking-mono md:flex">
+        <ul className="hidden items-center gap-9 font-mono text-[11px] uppercase tracking-[0.14em] md:flex">
           {LINKS.map((link) => (
             <li key={link.href}>
               <a
@@ -35,17 +34,12 @@ export function Nav() {
             </li>
           ))}
           <li>
-            <NavLink
+            <Link
               to="/projects"
-              className={({ isActive }) =>
-                cn(
-                  "border-b border-accent pb-[2px] text-fg transition-colors",
-                  !isActive && "hover:text-fg",
-                )
-              }
+              className="bg-accent px-3.5 py-2 text-black transition-colors hover:bg-[#ff8940]"
             >
-              Projects
-            </NavLink>
+              Open app ↗
+            </Link>
           </li>
         </ul>
       </Container>

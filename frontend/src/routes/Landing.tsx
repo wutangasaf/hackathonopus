@@ -2,8 +2,9 @@ import { motion, type Variants } from "framer-motion";
 import { Link } from "react-router-dom";
 
 import { BlockGrid } from "@/components/blocks/BlockGrid";
-import { BrickWall } from "@/components/blocks/BrickWall";
+import { Chapter } from "@/components/blocks/Chapter";
 import { Chip } from "@/components/blocks/Chip";
+import { DrawVerdictCard } from "@/components/blocks/DrawVerdictCard";
 import { Eyebrow } from "@/components/blocks/Eyebrow";
 import { Container } from "@/components/layout/Container";
 import { Footer } from "@/components/layout/Footer";
@@ -27,6 +28,7 @@ const stagger: Variants = {
 type Input = {
   num: string;
   chip: string;
+  chipTone?: Parameters<typeof Chip>[0]["tone"];
   title: string;
   body: string;
   cadence: string;
@@ -50,6 +52,7 @@ const INPUTS: Input[] = [
   {
     num: "03",
     chip: "IMG · live",
+    chipTone: "accent",
     title: "Jobsite imagery",
     body: "Phone photos from the builder, arriving monthly or continuously. Agent 5 gates quality; Agent 6 converts each photo into the plan's format for diffing.",
     cadence: "Monthly per draw · Continuous between",
@@ -207,17 +210,29 @@ export default function Landing() {
       <Nav />
 
       {/* HERO */}
-      <section className="relative overflow-hidden border-b border-line pt-20 pb-28 lg:pt-[120px] lg:pb-[160px]">
+      <section className="relative overflow-hidden border-b border-line-strong pt-14 pb-24 lg:pt-[56px] lg:pb-[96px]">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute"
+          style={{
+            top: "-120px",
+            left: "-10%",
+            width: "70%",
+            height: "540px",
+            background:
+              "radial-gradient(ellipse at center, rgba(255,107,26,0.07), transparent 60%)",
+          }}
+        />
         <Container>
           <motion.div
             initial="hidden"
             animate="show"
             variants={stagger}
-            className="grid grid-cols-1 items-end gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16"
+            className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-16"
           >
             <motion.div variants={fadeUp}>
               <Eyebrow>Built with Opus 4.7 · Apr 2026</Eyebrow>
-              <h1 className="mt-6 break-words font-black leading-[0.88] tracking-display text-fg text-[clamp(44px,8.5vw,168px)] lg:mt-10 lg:leading-[0.86]">
+              <h1 className="mt-6 break-words font-black leading-[0.88] tracking-[-0.055em] text-fg text-[clamp(44px,9.4vw,148px)]">
                 Build
                 <br />
                 to <span className="text-accent">plan</span>.
@@ -226,37 +241,34 @@ export default function Landing() {
                 <br />
                 on <span className="text-accent">proof</span>.
               </h1>
-              <p className="mt-5 max-w-[540px] text-fg-dim text-[clamp(15px,1.4vw,20px)] leading-[1.5] lg:mt-7">
+              <p className="mt-5 max-w-[540px] text-fg-dim text-[clamp(15px,1.35vw,19px)] leading-[1.55]">
                 AI co-pilot for bank-financed construction. Upload approved
                 plans, the finance plan with milestones, and phone photos.
                 Plumbline produces the draw verdict — citing G703 line items,
                 flagging unapproved deviations — in minutes, not weeks.
               </p>
-              <div className="mt-8 flex flex-wrap gap-4 lg:mt-12">
+              <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   to="/projects"
-                  className="inline-flex items-center gap-[10px] border border-transparent bg-accent px-[26px] py-[14px] font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.15)]"
+                  className="inline-flex items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
                 >
                   Start a project <span aria-hidden>↗</span>
                 </Link>
                 <a
                   href="#pipeline"
-                  className="inline-flex items-center gap-[10px] border border-line-strong px-[26px] py-[14px] font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-fg transition-all hover:border-fg-dim hover:bg-bg-1"
+                  className="inline-flex items-center gap-2.5 border border-line-strong px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-all hover:border-fg-dim hover:bg-bg-1"
                 >
                   See the pipeline
                 </a>
               </div>
-              <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-t border-line pt-5 lg:mt-14 lg:gap-12 lg:pt-6">
+              <dl className="mt-10 flex max-w-[540px] flex-wrap gap-8 border-t border-line pt-5">
                 <HeroStat value="7" label="Agents, end-to-end" />
                 <HeroStat value="4" label="Disciplines read" />
                 <HeroStat value="<60s" label="Report latency" />
               </dl>
             </motion.div>
-            <motion.div
-              variants={fadeUp}
-              className="hidden justify-self-end lg:block"
-            >
-              <BrickWall />
+            <motion.div variants={fadeUp}>
+              <DrawVerdictCard />
             </motion.div>
           </motion.div>
         </Container>
@@ -265,13 +277,13 @@ export default function Landing() {
       {/* INPUTS */}
       <RevealSection id="inputs">
         <Container>
-          <SectionHead
-            eyebrow="01 · Inputs"
-            heading={
+          <Chapter
+            number="01 · Inputs"
+            title={
               <>
                 Three inputs.
                 <br />
-                One verdict.
+                One <span className="text-accent">verdict</span>.
               </>
             }
             lead="Every Plumbline verdict is the composition of three things — the plans the bank pinned to the loan, the finance plan that prices them, and the imagery that proves them. Each arrives on its own cadence."
@@ -282,23 +294,23 @@ export default function Landing() {
                 <motion.article
                   key={input.num}
                   variants={fadeUp}
-                  className="flex min-h-[320px] flex-col justify-between bg-bg px-8 py-10 transition-colors hover:bg-bg-1"
+                  className="flex min-h-[320px] flex-col justify-between bg-bg p-9 transition-colors hover:bg-[#0c0c0c]"
                 >
                   <header className="flex items-start justify-between">
-                    <span className="font-mono text-[11px] tracking-mono text-fg-muted">
+                    <span className="font-mono text-[11px] tracking-wider text-fg-muted">
                       {input.num}
                     </span>
-                    <Chip>{input.chip}</Chip>
+                    <Chip tone={input.chipTone}>{input.chip}</Chip>
                   </header>
                   <div>
-                    <h3 className="mt-12 text-[32px] font-extrabold leading-[1.05] tracking-tight2">
+                    <h3 className="mt-9 text-[30px] font-extrabold leading-tight tracking-[-0.022em]">
                       {input.title}
                     </h3>
-                    <p className="mt-4 text-sm leading-[1.55] text-fg-dim">
+                    <p className="mt-3.5 text-sm leading-relaxed text-fg-dim">
                       {input.body}
                     </p>
                   </div>
-                  <div className="mt-8 font-mono text-[10px] uppercase tracking-eyebrow text-fg-muted">
+                  <div className="mt-7 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
                     {input.cadence}
                   </div>
                 </motion.article>
@@ -311,37 +323,62 @@ export default function Landing() {
       {/* PIPELINE */}
       <RevealSection id="pipeline">
         <Container>
-          <SectionHead
-            eyebrow="02 · Pipeline"
-            heading={
+          <Chapter
+            number="02 · Pipeline"
+            title={
               <>
                 Seven narrow
                 <br />
-                agents.
+                <span className="text-accent">agents</span>.
               </>
             }
             lead="Each agent does one thing well, with strict tool-use schemas and full token accounting. Four call Opus 4.7 vision; two are text-only. The orchestration is deterministic; the reasoning is not."
           />
+
+          {/* Pipeline rail with nodes */}
+          <div className="relative mb-0 hidden h-7 grid-cols-7 lg:grid" aria-hidden>
+            <div
+              className="absolute left-[14px] right-[14px] top-[13px] h-px"
+              style={{
+                background:
+                  "linear-gradient(to right, transparent, var(--accent) 5%, var(--accent) 95%, transparent)",
+              }}
+            />
+            {AGENTS.map((_, i) => (
+              <div key={i} className="relative flex items-center justify-center">
+                <span
+                  className="z-10 h-[9px] w-[9px] border-2 border-accent"
+                  style={{
+                    background:
+                      i === 0 || i === AGENTS.length - 1
+                        ? "var(--accent)"
+                        : "var(--bg)",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+
           <motion.div variants={stagger}>
             <BlockGrid className="grid-cols-2 lg:grid-cols-7">
               {AGENTS.map((agent) => (
                 <motion.article
                   key={agent.num}
                   variants={fadeUp}
-                  className="flex min-h-[200px] flex-col justify-between bg-bg px-5 py-7 transition-colors hover:bg-bg-1"
+                  className="flex min-h-[200px] flex-col justify-between bg-bg p-5 transition-colors hover:bg-bg-1"
                 >
                   <div>
-                    <div className="font-mono text-[11px] tracking-mono text-accent">
+                    <div className="font-mono text-[11px] tracking-wider text-accent">
                       {agent.num}
                     </div>
-                    <h4 className="mt-[18px] text-sm font-bold leading-[1.25] tracking-[-0.01em]">
+                    <h4 className="mt-4 text-sm font-bold leading-[1.25] tracking-[-0.01em]">
                       {agent.title}
                     </h4>
                     <p className="mt-3 text-xs leading-[1.5] text-fg-muted">
                       {agent.body}
                     </p>
                   </div>
-                  <div className="mt-4 flex items-center gap-[6px] border-t border-line pt-4 font-mono text-[10px] uppercase tracking-mono text-fg-muted">
+                  <div className="mt-4 flex items-center gap-[6px] border-t border-line pt-4 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
                     <span
                       aria-hidden
                       className={cn(
@@ -355,25 +392,42 @@ export default function Landing() {
               ))}
             </BlockGrid>
           </motion.div>
+
+          <div className="mt-6 flex flex-wrap items-center justify-between gap-4 font-mono text-[11px] uppercase tracking-wider text-fg-muted">
+            <div className="flex flex-wrap gap-5">
+              <span className="inline-flex items-center gap-2">
+                <i aria-hidden className="inline-block h-2 w-2 bg-warn" />
+                Vision
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <i aria-hidden className="inline-block h-2 w-2 bg-accent" />
+                Text
+              </span>
+            </div>
+            <div>
+              Deterministic orchestration · Full token accounting · Strict
+              tool schemas
+            </div>
+          </div>
         </Container>
       </RevealSection>
 
       {/* GAP REPORT */}
       <RevealSection id="report">
         <Container>
-          <SectionHead
-            eyebrow="03 · The screen bankers want"
-            heading={
+          <Chapter
+            number="03 · The screen bankers want"
+            title={
               <>
                 Verified. Cited.
                 <br />
-                Signable.
+                <span className="text-accent">Signable</span>.
               </>
             }
             lead="The Gap Report is the one artifact the CRMC signs and the bank funds against. Every cell cites photos. Every deviation carries a flag. Every verdict is traceable to the evidence that produced it."
           />
           <motion.div variants={fadeUp}>
-            <div className="border border-line bg-bg-1 p-10">
+            <div className="border border-line-strong bg-bg-1 p-10">
               <header className="flex flex-wrap items-start justify-between gap-6 border-b border-line pb-7">
                 <div>
                   <h3 className="text-[22px] font-bold tracking-[-0.015em]">
@@ -397,13 +451,13 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="flex min-w-[280px] flex-col items-end gap-[6px]">
-                  <span className="font-mono text-[10px] uppercase tracking-eyebrow text-fg-dim">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
                     Draw verdict
                   </span>
-                  <span className="border border-success/35 bg-success/10 px-[14px] py-[6px] font-mono text-[12px] uppercase tracking-eyebrow text-success">
+                  <span className="border border-success/30 bg-success/10 px-3.5 py-1.5 font-mono text-[12px] uppercase tracking-[0.14em] text-success">
                     Approve with conditions
                   </span>
-                  <span className="mt-1 text-[44px] font-extrabold tracking-[-0.03em]">
+                  <span className="mt-1 text-[44px] font-extrabold leading-none tracking-[-0.035em]">
                     $2,000,000
                   </span>
                 </div>
@@ -467,7 +521,7 @@ export default function Landing() {
                   </div>
 
                   <div className="mt-8 border-l-2 border-accent bg-bg px-6 py-5">
-                    <div className="mb-2 font-mono text-[10px] uppercase tracking-mono text-fg-dim">
+                    <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-fg-dim">
                       Narrative · CRMC draft
                     </div>
                     <p className="text-sm leading-[1.6] text-fg">
@@ -489,6 +543,55 @@ export default function Landing() {
         </Container>
       </RevealSection>
 
+      {/* CLOSING CTA */}
+      <section
+        id="start"
+        className="relative overflow-hidden border-b border-line py-[120px] pb-20 text-center"
+      >
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-[-120px] h-[360px] w-3/5 -translate-x-1/2"
+          style={{
+            background:
+              "radial-gradient(ellipse at center, rgba(255,107,26,0.07), transparent 65%)",
+          }}
+        />
+        <Container className="relative">
+          <div className="inline-flex items-center gap-2.5 font-mono text-[11px] uppercase tracking-[0.16em] text-fg-dim">
+            <span
+              aria-hidden
+              className="inline-block h-1.5 w-1.5 bg-accent"
+              style={{ boxShadow: "0 0 8px rgba(255,107,26,0.5)" }}
+            />
+            Start a project
+          </div>
+          <h2 className="mt-4 text-[clamp(48px,7.5vw,120px)] font-black leading-[0.92] tracking-[-0.05em]">
+            Build to <span className="text-accent">plan</span>.
+            <br />
+            Release on <span className="text-accent">proof</span>.
+          </h2>
+          <p className="mx-auto mt-6 max-w-[540px] text-base leading-relaxed text-fg-dim">
+            Plug in the loan&apos;s plans and finance plan once. Send phone
+            photos as the build progresses. Get a signable draw verdict every
+            milestone — in minutes.
+          </p>
+          <div className="mt-8 flex justify-center gap-3">
+            <Link
+              to="/projects"
+              className="inline-flex items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
+            >
+              Start a project <span aria-hidden>↗</span>
+            </Link>
+            <a
+              href="mailto:asafe79@gmail.com"
+              className="inline-flex items-center gap-2.5 border border-line-strong px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-all hover:border-fg-dim hover:bg-bg-1"
+            >
+              Talk to founders
+            </a>
+          </div>
+        </Container>
+      </section>
+
       <Footer />
     </>
   );
@@ -497,38 +600,13 @@ export default function Landing() {
 function HeroStat({ value, label }: { value: string; label: string }) {
   return (
     <div>
-      <dt className="font-mono text-[28px] font-semibold tracking-[-0.02em]">
+      <dt className="font-mono text-[26px] font-semibold tracking-[-0.02em] leading-none">
         {value}
       </dt>
-      <dd className="mt-1 font-mono text-[11px] uppercase tracking-mono text-fg-muted">
+      <dd className="mt-1 font-mono text-[11px] uppercase tracking-wider text-fg-muted">
         {label}
       </dd>
     </div>
-  );
-}
-
-function SectionHead({
-  eyebrow,
-  heading,
-  lead,
-}: {
-  eyebrow: string;
-  heading: React.ReactNode;
-  lead: string;
-}) {
-  return (
-    <motion.div
-      variants={fadeUp}
-      className="mb-16 grid grid-cols-1 items-start gap-12 lg:grid-cols-[1fr_2fr]"
-    >
-      <div>
-        <Eyebrow>{eyebrow}</Eyebrow>
-        <h2 className="mt-6 text-[clamp(32px,4.5vw,64px)] font-extrabold leading-none tracking-[-0.035em]">
-          {heading}
-        </h2>
-      </div>
-      <p className="text-[17px] leading-[1.55] text-fg-dim">{lead}</p>
-    </motion.div>
   );
 }
 
@@ -546,7 +624,7 @@ function RevealSection({
       whileInView="show"
       viewport={{ once: true, margin: "-10%" }}
       variants={stagger}
-      className="border-b border-line py-[120px]"
+      className="border-b border-line-strong py-[96px]"
     >
       {children}
     </motion.section>
@@ -565,7 +643,7 @@ function Legend() {
       {items.map((it) => (
         <span
           key={it.tone}
-          className="inline-flex items-center gap-[6px] font-mono text-[10px] uppercase tracking-mono text-fg-dim"
+          className="inline-flex items-center gap-[6px] font-mono text-[10px] uppercase tracking-wider text-fg-dim"
         >
           <span aria-hidden className={cn("h-[10px] w-[10px]", legendDot(it.tone))} />
           {it.label}
