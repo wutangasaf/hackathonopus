@@ -207,17 +207,17 @@ export default function Landing() {
       <Nav />
 
       {/* HERO */}
-      <section className="relative overflow-hidden border-b border-line pt-[120px] pb-[160px]">
+      <section className="relative overflow-hidden border-b border-line pt-20 pb-28 lg:pt-[120px] lg:pb-[160px]">
         <Container>
           <motion.div
             initial="hidden"
             animate="show"
             variants={stagger}
-            className="grid grid-cols-1 items-end gap-16 lg:grid-cols-[1.35fr_1fr]"
+            className="grid grid-cols-1 items-end gap-12 lg:grid-cols-[1.35fr_1fr] lg:gap-16"
           >
             <motion.div variants={fadeUp}>
               <Eyebrow>Built with Opus 4.7 · Apr 2026</Eyebrow>
-              <h1 className="mt-10 font-black leading-[0.86] tracking-display text-fg text-[clamp(56px,10.5vw,168px)]">
+              <h1 className="mt-6 break-words font-black leading-[0.88] tracking-display text-fg text-[clamp(44px,8.5vw,168px)] lg:mt-10 lg:leading-[0.86]">
                 Build
                 <br />
                 to <span className="text-brand">plan</span>.
@@ -226,13 +226,13 @@ export default function Landing() {
                 <br />
                 on <span className="text-brand">proof</span>.
               </h1>
-              <p className="mt-7 max-w-[540px] text-fg-dim text-[clamp(16px,1.5vw,20px)] leading-[1.45]">
+              <p className="mt-5 max-w-[540px] text-fg-dim text-[clamp(15px,1.4vw,20px)] leading-[1.5] lg:mt-7">
                 AI co-pilot for bank-financed construction. Upload approved
                 plans, the finance plan with milestones, and phone photos.
                 Plumbline produces the draw verdict — citing G703 line items,
                 flagging unapproved deviations — in minutes, not weeks.
               </p>
-              <div className="mt-12 flex flex-wrap gap-4">
+              <div className="mt-8 flex flex-wrap gap-4 lg:mt-12">
                 <Link
                   to="/projects"
                   className="inline-flex items-center gap-[10px] border border-transparent bg-brand px-[26px] py-[14px] font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.15)]"
@@ -246,7 +246,7 @@ export default function Landing() {
                   See the pipeline
                 </a>
               </div>
-              <dl className="mt-14 flex flex-wrap gap-12 border-t border-line pt-6">
+              <dl className="mt-10 flex flex-wrap gap-x-10 gap-y-4 border-t border-line pt-5 lg:mt-14 lg:gap-12 lg:pt-6">
                 <HeroStat value="7" label="Agents, end-to-end" />
                 <HeroStat value="4" label="Disciplines read" />
                 <HeroStat value="<60s" label="Report latency" />
