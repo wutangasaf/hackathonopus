@@ -9,7 +9,7 @@ import { withAgentRun } from "./shared.js";
 import { config } from "../config.js";
 
 const AGENT_NAME = "PlanClassifier";
-const MODEL_VERSION = "plan-classifier/v1";
+const MODEL_VERSION = "plan-classifier/v2";
 
 const titleblockSchema = z.object({
   sheetLabel: z.string().optional(),
@@ -32,12 +32,14 @@ const toolOutputSchema = z.object({
 
 type ToolOutput = z.infer<typeof toolOutputSchema>;
 
-const SYSTEM_PROMPT = `You are a construction-plan analyst. You receive rendered pages from an approved construction-plan PDF (the owner-approved set). For each page, classify:
+const SYSTEM_PROMPT = `You are a construction-plan analyst. You receive rendered pages from an approved construction-plan PDF (the owner-approved set). Each page is preceded by a header line that includes the source filename and the page number within that file — treat both as signals.
 
-- discipline: one of ${DISCIPLINES.join(", ")}. Pick the closest fit even if the page is mixed-discipline; when a page is clearly an index/cover sheet with no discipline content, use the dominant discipline referenced. If truly unclassifiable, default to ARCHITECTURE and flag in notes.
-- sheetRole: one of ${SHEET_ROLES.join(", ")}. PLAN_VIEW for floor plans / site plans / top-down drawings. ELEVATION for exterior/side views. SECTION for cut-through views. DETAIL for callout details. SCHEDULE for fixture/door/window schedules. OTHER for cover sheets, general notes, indexes, title sheets.
-- titleblock: extract sheetLabel (e.g. "A-101", "E-2"), date, scale (e.g. "1/4\" = 1'-0\""), architect/firm name — only if visible in the page's titleblock. Omit fields that aren't shown; never invent.
-- notes: optional, brief (≤ 120 chars). Use only for things an inspector would care about on this page (ambiguity, damaged scan, unusual discipline mix).
+For each page, classify:
+
+- discipline: one of ${DISCIPLINES.join(", ")}. Use ALL available evidence: the titleblock sheet label prefix (A- → ARCHITECTURE, S- → STRUCTURAL, E- → ELECTRICAL, P- or M-/plumbing fixtures → PLUMBING), the visible drawing content (framing/rebar → STRUCTURAL, one-line/panel schedules/lighting → ELECTRICAL, risers/waste/vent → PLUMBING, floor layouts/rooms/walls → ARCHITECTURE), and the source filename (e.g. "structural.pdf" strongly implies STRUCTURAL for all its pages). Do not collapse everything into ARCHITECTURE — if a page has any structural, electrical, or plumbing content as its primary subject, pick that discipline. Only use ARCHITECTURE when the drawing is genuinely architectural (floor plans, elevations of the building envelope, room layouts, finishes) or when you have strong independent evidence.
+- sheetRole: one of ${SHEET_ROLES.join(", ")}. PLAN_VIEW for floor plans, site plans, foundation plans, framing plans, power plans, plumbing plans — anything top-down. ELEVATION for exterior/side views. SECTION for cut-through views. DETAIL for callout details. SCHEDULE for fixture/door/window/panel schedules. OTHER is reserved strictly for cover sheets, title sheets, pure general-notes pages, or index/sheet-list pages — do NOT use OTHER for any page that contains a drawing. If the page has any drawn content at all, pick the best drawing role (default to PLAN_VIEW for top-down views when uncertain).
+- titleblock: extract sheetLabel (e.g. "A-101", "E-2", "S-201"), date, scale (e.g. "1/4\\" = 1'-0\\""), architect/firm name. sheetLabel is the most important field — if a sheet code is legible anywhere in the titleblock, you MUST return it. Omit fields that are not legible; never invent or guess a code.
+- notes: optional, brief (≤ 120 chars). Use only for things an inspector would care about on this page (ambiguity, damaged scan, unusual discipline mix, titleblock obscured).
 
 You MUST call the classify_pages tool exactly once with one entry per page, in order, using pageIndex that matches the 0-indexed input order I specify below.`;
 
@@ -45,6 +47,7 @@ type PageRef = {
   pageIndex: number;
   documentId: Types.ObjectId;
   documentPageNumber: number;
+  originalFilename: string;
   png: Buffer;
 };
 
@@ -60,6 +63,7 @@ async function renderAllPlanPages(
         pageIndex: globalIndex++,
         documentId: doc._id,
         documentPageNumber: i + 1,
+        originalFilename: doc.originalFilename,
         png,
       });
     });
@@ -71,13 +75,13 @@ function buildUserMessages(pages: PageRef[]): ClaudeMessage[] {
   const content: ClaudeMessage["content"] = [
     {
       type: "text",
-      text: `Classify the following ${pages.length} page(s). pageIndex ranges 0..${pages.length - 1}, matching the order of the images below.`,
+      text: `Classify the following ${pages.length} page(s). pageIndex ranges 0..${pages.length - 1}, matching the order of the images below. Each header names the source PDF filename and the 1-indexed page within that file — use both as classification signals alongside the image.`,
     },
   ];
   for (const p of pages) {
     content.push({
       type: "text",
-      text: `--- pageIndex=${p.pageIndex} ---`,
+      text: `--- pageIndex=${p.pageIndex} | source="${p.originalFilename}" p.${p.documentPageNumber} ---`,
     });
     content.push({
       type: "image",
