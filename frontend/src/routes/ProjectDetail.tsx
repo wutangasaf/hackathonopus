@@ -6,6 +6,8 @@ import { Chip } from "@/components/blocks/Chip";
 import { Eyebrow } from "@/components/blocks/Eyebrow";
 import { Container } from "@/components/layout/Container";
 import { Nav } from "@/components/layout/Nav";
+import { PipelineProgress } from "@/components/uploads/PipelineProgress";
+import { PlansDropzone } from "@/components/uploads/PlansDropzone";
 import { relativeTime } from "@/lib/time";
 import type {
   AgentName,
@@ -204,42 +206,42 @@ function TabBar({
 function PlansTab({ projectId }: { projectId: string }) {
   const plans = usePlans(projectId);
   const classification = usePlanClassification(projectId);
+  const hasClassification = Boolean(classification.data);
 
   return (
     <div className="space-y-10">
       <section>
-        <SectionLabel>01 · Uploaded plan documents</SectionLabel>
+        <SectionLabel>01 · Upload construction plans</SectionLabel>
+        <PlansDropzone projectId={projectId} />
+      </section>
+
+      <section>
+        <SectionLabel>02 · Pipeline progress</SectionLabel>
+        <PipelineProgress projectId={projectId} />
+      </section>
+
+      <section>
+        <SectionLabel>03 · Uploaded plan documents</SectionLabel>
         {plans.isLoading ? (
           <SkeletonRows count={3} />
         ) : plans.isError ? (
           <InlineError message={plans.error?.message ?? "Failed to load plans"} />
         ) : !plans.data || plans.data.length === 0 ? (
-          <EmptyRow>
-            No plan PDFs uploaded yet. Drop one in once the upload UI lands — for
-            now, <code>POST /api/projects/{projectId}/plans</code> works from
-            curl.
-          </EmptyRow>
+          <EmptyRow>NO PLANS UPLOADED · DROP PDFS ABOVE TO BEGIN</EmptyRow>
         ) : (
           <DocumentList docs={plans.data} />
         )}
       </section>
 
-      <section>
-        <SectionLabel>02 · Plan classification (Agent 1)</SectionLabel>
-        <ClassificationSummary
-          state={
-            classification.isLoading
-              ? "loading"
-              : classification.isError
-                ? "error"
-                : classification.data
-                  ? "ready"
-                  : "pending"
-          }
-          classification={classification.data ?? null}
-          errorText={classification.error?.message}
-        />
-      </section>
+      {hasClassification && (
+        <section>
+          <SectionLabel>04 · Plan classification (Agent 1)</SectionLabel>
+          <ClassificationSummary
+            state="ready"
+            classification={classification.data!}
+          />
+        </section>
+      )}
     </div>
   );
 }
