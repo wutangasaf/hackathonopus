@@ -166,6 +166,20 @@ curl -s http://localhost:4000/api/projects/$PROJECT/runs
 | Residential loans as the demo path; `commercial_poc` schema-ready    | Full commercial/hud productization           |
 | Form-first finance-plan ingestion                                    | Excel/PDF G703 OCR (Agent 3b, not in demo)   |
 
+## Productisation: template service
+
+The demo pipeline is LLM-first — Claude reads a plan it has never seen and returns a structured `PlanFormat`. That's the right starting point, but at scale construction lenders work with repeat counterparties: the same GC's SOV format, the same architect's titleblock, the same bank's draw schedule. For those recurring formats, template-based extraction is strictly more deterministic, cheaper per document, and doesn't regress when a prompt changes.
+
+The v2 shape is an **optional side service** offering three surfaces:
+
+- **Mapping** — bind columns, cells or regions of a sample document to `PlanFormat.elements[]` fields (`elementId`, `kind`, `identifier`, `spec`).
+- **Parsing templates** — saved and versioned per counterparty (e.g. `BigGC Inc. SOV / v3`, `Smith & Partners titleblock / v1`).
+- **Extraction rules** — regex, column ranges, keyword anchors — applied before any LLM fallback.
+
+Agent 1 is the natural routing point: a titleblock match flips the document onto the deterministic template path; no match falls through to the existing LLM extractors (Agent 2 for plans, the future Agent 3b for G703 / BOQ). Template hits preserve accuracy over time with minimal ops overhead; LLM handles the long tail.
+
+**Demo surface (frontend suggestion):** a `Use a template` toggle or a `Mock: apply BigGC SOV template` button on the upload page — signals the routing intent in the video/demo without building the template editor UI for the hackathon.
+
 ## Tech stack
 
 - **Backend**: Node 20+, TypeScript, Fastify 4, Mongoose 8, Zod, Anthropic SDK, `pdf-to-img`, `heic-convert`, `exifr`
