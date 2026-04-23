@@ -78,6 +78,52 @@ type AgentRunStatus = "running" | "succeeded" | "failed";
 - **400** → unknown discipline.
 - **404** → no plan format for that discipline yet.
 
+### Rendering classified sheets as chips
+
+Every `ClassifiedSheet` the Gantt palette shows comes with two enums (`discipline`, `sheetRole`) plus an optional `titleblock`. The frontend has ready-made labels and a helper — import them from `@/lib/types`:
+
+```ts
+import {
+  DISCIPLINE_LABEL,   // { ARCHITECTURE: "Architecture", STRUCTURAL: "Structural", ELECTRICAL: "Electrical", PLUMBING: "Plumbing" }
+  SHEET_ROLE_LABEL,   // { PLAN_VIEW: "Plan", ELEVATION: "Elevation", SECTION: "Section", DETAIL: "Detail", SCHEDULE: "Schedule", OTHER: "Cover / Notes" }
+  formatSheetChip,    // (sheet) => "Electrical Plan"
+  type ClassifiedSheet,
+} from "@/lib/types";
+```
+
+**Discipline → color** is yours to pick (one per enum value). Suggested palette: ARCHITECTURE=slate, STRUCTURAL=amber, ELECTRICAL=sky, PLUMBING=cyan.
+
+**Kind-of-doc examples mapped to the enums:**
+- "Plan" → `sheetRole === "PLAN_VIEW"`
+- "Bill of Quantities" / fixture schedule / door schedule → `sheetRole === "SCHEDULE"`
+- "Structural Drawings" → `discipline === "STRUCTURAL"` (any `sheetRole`)
+- "Cover sheet" / "General notes" / index page → `sheetRole === "OTHER"`
+
+**Scale:** `titleblock.scale` is present **only when the sheet is an actual drawing** and the classifier read a scale off the title block (e.g. `"1:50"`, `"1/4\" = 1'-0\""`). For schedules, cover sheets, and notes-only pages it will be `undefined` — treat it as "show when present, hide otherwise". Same rule for `titleblock.date` and `titleblock.architect`.
+
+**Chip component example** (drop-in, Tailwind):
+
+```tsx
+import { formatSheetChip, type ClassifiedSheet } from "@/lib/types";
+
+export function SheetChip({ sheet }: { sheet: ClassifiedSheet }) {
+  const { titleblock } = sheet;
+  return (
+    <div className="flex flex-col gap-0.5 rounded-md border px-3 py-2 bg-white">
+      <div className="text-sm font-medium">{formatSheetChip(sheet)}</div>
+      {titleblock.sheetLabel && (
+        <div className="text-xs text-neutral-500">{titleblock.sheetLabel}</div>
+      )}
+      {titleblock.scale && (
+        <div className="text-xs text-neutral-400">Scale {titleblock.scale}</div>
+      )}
+    </div>
+  );
+}
+```
+
+**Grouping tip:** for the palette sidebar group by discipline, then sort by `sheetRole` in enum order (`PLAN_VIEW → ELEVATION → SECTION → DETAIL → SCHEDULE → OTHER`). That order is already the declaration order in `SHEET_ROLES`, so a stable sort on `SHEET_ROLES.indexOf(s.sheetRole)` works.
+
 ---
 
 ## Finance plan (JSON-first)

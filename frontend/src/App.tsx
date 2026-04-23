@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 
 import GanttBuilder from "@/routes/gantt/GanttBuilder";
 import Landing from "@/routes/Landing";
+import PhotoDetail from "@/routes/PhotoDetail";
 import Projects from "@/routes/Projects";
 import ProjectDetail from "@/routes/ProjectDetail";
 import Report from "@/routes/Report";
@@ -14,6 +15,10 @@ export default function App() {
       <Route path="/projects" element={<Projects />} />
       <Route path="/projects/:id" element={<ProjectDetail />} />
       <Route path="/projects/:id/gantt" element={<GanttBuilder />} />
+      <Route
+        path="/projects/:id/photos/:photoId"
+        element={<PhotoDetail />}
+      />
       <Route path="/projects/:id/reports/:reportId" element={<Report />} />
       <Route path="/projects/:id/runs" element={<Runs />} />
     </Routes>

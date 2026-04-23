@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { BlockGrid } from "@/components/blocks/BlockGrid";
 import { Chip } from "@/components/blocks/Chip";
 import { Eyebrow } from "@/components/blocks/Eyebrow";
 import { Container } from "@/components/layout/Container";
 import { Nav } from "@/components/layout/Nav";
+import { PhotosDropzone } from "@/components/uploads/PhotosDropzone";
 import { PipelineProgress } from "@/components/uploads/PipelineProgress";
 import { PlansDropzone } from "@/components/uploads/PlansDropzone";
 import { relativeTime } from "@/lib/time";
@@ -25,7 +26,7 @@ import { useFinancePlan, useCurrentMilestone } from "@/services/financePlan";
 import { usePhotos } from "@/services/photos";
 import { usePlanClassification, usePlans } from "@/services/plans";
 import { useProject } from "@/services/projects";
-import { useReports } from "@/services/reports";
+import { useCreateReport, useReports } from "@/services/reports";
 import { useLatestRunByAgent } from "@/services/runs";
 
 const TABS = [
@@ -464,23 +465,75 @@ function MilestoneStatusChip({
 
 function PhotosTab({ projectId }: { projectId: string }) {
   const photos = usePhotos(projectId);
+  const count = photos.data?.length ?? 0;
 
   return (
-    <section>
-      <SectionLabel>01 · Uploaded photos</SectionLabel>
-      {photos.isLoading ? (
-        <SkeletonRows count={3} />
-      ) : photos.isError ? (
-        <InlineError message={photos.error?.message ?? "Failed to load photos"} />
-      ) : !photos.data || photos.data.length === 0 ? (
-        <EmptyRow>
-          No photos uploaded yet. Photo upload + thumbnail grid land in the next
-          turn.
-        </EmptyRow>
-      ) : (
-        <DocumentList docs={photos.data} />
-      )}
-    </section>
+    <div className="space-y-10">
+      <section>
+        <SectionLabel>01 · Upload jobsite photos</SectionLabel>
+        <PhotosDropzone projectId={projectId} />
+      </section>
+
+      <section>
+        <SectionLabel>
+          02 · Photo stream{count > 0 ? ` · ${count}` : ""}
+        </SectionLabel>
+        {photos.isLoading ? (
+          <SkeletonRows count={3} />
+        ) : photos.isError ? (
+          <InlineError
+            message={photos.error?.message ?? "Failed to load photos"}
+          />
+        ) : !photos.data || photos.data.length === 0 ? (
+          <EmptyRow>NO PHOTOS YET · UPLOAD TO BEGIN</EmptyRow>
+        ) : (
+          <PhotoGrid projectId={projectId} docs={photos.data} />
+        )}
+      </section>
+    </div>
+  );
+}
+
+function PhotoGrid({
+  projectId,
+  docs,
+}: {
+  projectId: string;
+  docs: DocumentRecord[];
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-[2px] bg-[var(--line)] md:grid-cols-3 lg:grid-cols-4">
+      {docs.map((d) => (
+        <Link
+          key={d._id}
+          to={`/projects/${projectId}/photos/${d._id}`}
+          className="group flex aspect-[4/3] flex-col justify-between bg-bg-1 p-4 transition-colors hover:bg-bg-2"
+        >
+          <div className="flex items-start justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted">
+              {d.mimeType.replace("image/", "")}
+            </span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
+              …{d.sha256.slice(-6)}
+            </span>
+          </div>
+          <div>
+            <div
+              className="font-mono text-[36px] font-extrabold leading-none tracking-[-0.04em] text-fg-dim group-hover:text-accent"
+              aria-hidden
+            >
+              {d.originalFilename.charAt(0).toUpperCase() || "·"}
+            </div>
+            <div className="mt-3 truncate font-mono text-[11px] uppercase tracking-[0.12em] text-fg">
+              {d.originalFilename}
+            </div>
+            <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+              {relativeTime(d.serverReceivedAt)}
+            </div>
+          </div>
+        </Link>
+      ))}
+    </div>
   );
 }
 
@@ -488,27 +541,78 @@ function PhotosTab({ projectId }: { projectId: string }) {
 
 function ReportsTab({ projectId }: { projectId: string }) {
   const reports = useReports(projectId);
+  const finance = useFinancePlan(projectId);
+  const navigate = useNavigate();
+  const createReport = useCreateReport(projectId, {
+    onSuccess: (rep) => navigate(`/projects/${projectId}/reports/${rep._id}`),
+  });
+
+  const canGenerate = Boolean(finance.data && !createReport.isPending);
 
   return (
-    <section>
-      <SectionLabel>01 · Draw reports</SectionLabel>
-      {reports.isLoading ? (
-        <SkeletonRows count={3} />
-      ) : reports.isError ? (
-        <InlineError message={reports.error?.message ?? "Failed to load reports"} />
-      ) : !reports.data || reports.data.length === 0 ? (
-        <EmptyRow>
-          No draw reports yet. Agent 7 runs synchronously (30–60 s); trigger one
-          from the next-turn UI, or POST <code>/reports</code> now.
-        </EmptyRow>
-      ) : (
-        <div className="border border-line">
-          {reports.data.map((r) => (
-            <ReportRow key={r._id} projectId={projectId} report={r} />
-          ))}
+    <div className="space-y-10">
+      <section>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <SectionLabel>01 · Generate a draw report</SectionLabel>
+          <button
+            type="button"
+            disabled={!canGenerate}
+            onClick={() => createReport.mutate({})}
+            className="inline-flex items-center gap-2 bg-accent px-5 py-2.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940] disabled:bg-accent/60 disabled:cursor-not-allowed"
+          >
+            {createReport.isPending
+              ? "CRMC drafting…"
+              : "Generate report ↗"}
+          </button>
         </div>
-      )}
-    </section>
+        {!finance.data && !finance.isLoading && (
+          <p className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
+            Publish a finance plan first · Gantt builder → Publish
+          </p>
+        )}
+        {createReport.isPending && (
+          <div className="mt-4 border border-line bg-bg-1 p-5">
+            <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-dim">
+              Agent 7 · Comparison &amp; Gap
+            </div>
+            <p className="mt-2 text-sm text-fg-muted">
+              Aggregating plan elements, observations, and finance rules.
+              Typically 30–60 seconds. You&apos;ll be taken to the report
+              when it&apos;s ready.
+            </p>
+          </div>
+        )}
+        {createReport.isError && (
+          <div className="mt-4 border-l-2 border-danger bg-bg-1 p-4">
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+              Error · {createReport.error?.status}
+            </div>
+            <p className="mt-1 font-mono text-[11px] text-fg-dim">
+              {createReport.error?.body?.slice(0, 280)}
+            </p>
+          </div>
+        )}
+      </section>
+
+      <section>
+        <SectionLabel>02 · Prior reports</SectionLabel>
+        {reports.isLoading ? (
+          <SkeletonRows count={3} />
+        ) : reports.isError ? (
+          <InlineError
+            message={reports.error?.message ?? "Failed to load reports"}
+          />
+        ) : !reports.data || reports.data.length === 0 ? (
+          <EmptyRow>NO REPORTS YET · GENERATE ONE ABOVE</EmptyRow>
+        ) : (
+          <div className="border border-line">
+            {reports.data.map((r) => (
+              <ReportRow key={r._id} projectId={projectId} report={r} />
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
 

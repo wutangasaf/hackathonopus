@@ -16,6 +16,28 @@ export const SHEET_ROLES = [
 ] as const;
 export type SheetRole = (typeof SHEET_ROLES)[number];
 
+export const DISCIPLINE_LABEL: Record<Discipline, string> = {
+  ARCHITECTURE: "Architecture",
+  STRUCTURAL: "Structural",
+  ELECTRICAL: "Electrical",
+  PLUMBING: "Plumbing",
+};
+
+export const SHEET_ROLE_LABEL: Record<SheetRole, string> = {
+  PLAN_VIEW: "Plan",
+  ELEVATION: "Elevation",
+  SECTION: "Section",
+  DETAIL: "Detail",
+  SCHEDULE: "Schedule",
+  OTHER: "Cover / Notes",
+};
+
+export function formatSheetChip(
+  s: Pick<ClassifiedSheet, "discipline" | "sheetRole">,
+): string {
+  return `${DISCIPLINE_LABEL[s.discipline]} ${SHEET_ROLE_LABEL[s.sheetRole]}`;
+}
+
 export const DOCUMENT_KINDS = [
   "PLAN",
   "FINANCE_PLAN",
@@ -341,7 +363,7 @@ export type PhotoAssessment = {
   quality: PhotoQuality;
   discipline: Discipline | null;
   matchedShotId?: string;
-  phaseFit?: string;
+  phaseFit?: number;
   issues: string[];
   retakeInstructions?: string;
 };
