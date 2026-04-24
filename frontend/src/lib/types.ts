@@ -381,6 +381,7 @@ export type PhotoGuidanceShot = {
   angle?: string;
   lighting?: string;
   safety?: string;
+  proofOfLocation?: string;
   referenceElementIds: string[];
   referenceLineNumbers: string[];
 };

@@ -233,6 +233,17 @@ function ShotRow({ shot, index }: { shot: PhotoGuidanceShot; index: number }) {
           {shot.safety && <Spec label="Safety" tone="warn">{shot.safety}</Spec>}
         </dl>
 
+        {shot.proofOfLocation && (
+          <div className="mt-4 border-l-2 border-accent bg-bg-1 px-4 py-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-accent">
+              Prove it's this element
+            </div>
+            <p className="mt-1 text-[13px] leading-[1.45] text-fg">
+              {shot.proofOfLocation}
+            </p>
+          </div>
+        )}
+
         {shot.referenceElementIds.length > 0 && (
           <div className="mt-4">
             <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">

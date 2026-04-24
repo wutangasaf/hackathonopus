@@ -1,6 +1,12 @@
 import { Camera, RotateCcw, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import {
+  AssessmentFeedback,
+  deriveStatus,
+  useAssessmentPolling,
+  type ShotStatus,
+} from "@/components/inspector/AssessmentFeedback";
 import { DEMO_JOBSITE_GPS } from "@/lib/hardcoded";
 import { cn } from "@/lib/utils";
 import {
@@ -8,7 +14,7 @@ import {
   type PhotoUploadHint,
 } from "@/services/photos";
 
-type CaptureMode = "idle" | "stream" | "preview" | "uploading";
+type CaptureMode = "idle" | "stream" | "preview" | "uploading" | "assessing";
 
 type GeoFix = {
   lat: number;
@@ -44,12 +50,16 @@ async function getGeoFix(timeoutMs = 4000): Promise<GeoFix> {
 
 export function CapturePanel({
   projectId,
+  shotId,
   shotLabel,
   disabled,
+  onShotResolved,
 }: {
   projectId: string;
+  shotId?: string;
   shotLabel?: string;
   disabled?: boolean;
+  onShotResolved?: (shotId: string, status: ShotStatus) => void;
 }) {
   const nativeInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -63,19 +73,70 @@ export function CapturePanel({
   } | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [lastStatus, setLastStatus] = useState<string | null>(null);
+  const [pendingAssessment, setPendingAssessment] = useState<{
+    shotId?: string;
+    photoDocumentId: string;
+  } | null>(null);
 
   const upload = useUploadPhotos(projectId, {
     onSuccess: (res) => {
-      setLastStatus(`${res.documents.length} photo received · pipeline queued`);
-      setPreview(null);
-      setMode("idle");
-      window.setTimeout(() => setLastStatus(null), 4000);
+      const doc = res.documents[0];
+      if (doc) {
+        setPendingAssessment({ shotId, photoDocumentId: doc._id });
+        setMode("assessing");
+      } else {
+        // No document came back — fall back to old behaviour.
+        setLastStatus("photo received · pipeline queued");
+        setPreview(null);
+        setMode("idle");
+        window.setTimeout(() => setLastStatus(null), 4000);
+      }
     },
     onError: (err) => {
       setErrorText(`${err.status} · ${err.body.slice(0, 200)}`);
       setMode("preview");
     },
   });
+
+  const assessmentQuery = useAssessmentPolling(
+    projectId,
+    pendingAssessment?.photoDocumentId,
+    Boolean(pendingAssessment),
+  );
+  const assessment = assessmentQuery.data?.assessment ?? null;
+  const assessmentStatus: ShotStatus | null = pendingAssessment
+    ? assessment
+      ? deriveStatus(assessment)
+      : "pending"
+    : null;
+
+  useEffect(() => {
+    if (!pendingAssessment) return;
+    if (!assessment) return;
+    const resolved = deriveStatus(assessment);
+    if (pendingAssessment.shotId && onShotResolved) {
+      onShotResolved(pendingAssessment.shotId, resolved);
+    }
+    if (resolved === "passed") {
+      if (preview?.url) URL.revokeObjectURL(preview.url);
+      setPreview(null);
+      setMode("idle");
+      setLastStatus("Agent 5 · photo passed ✓");
+      window.setTimeout(() => setLastStatus(null), 4000);
+      setPendingAssessment(null);
+    } else {
+      // NEEDS_RETAKE — keep preview, stay in assessing mode so feedback shows.
+      setMode("preview");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessment, pendingAssessment?.photoDocumentId]);
+
+  function clearAssessmentAndRetake() {
+    if (preview?.url) URL.revokeObjectURL(preview.url);
+    setPreview(null);
+    setPendingAssessment(null);
+    setMode("idle");
+  }
 
   useEffect(
     () => () => {
@@ -196,6 +257,7 @@ export function CapturePanel({
   }
 
   const uploading = mode === "uploading" || upload.isPending;
+  const assessing = mode === "assessing" || Boolean(pendingAssessment);
 
   return (
     <div className="space-y-3">
@@ -248,7 +310,7 @@ export function CapturePanel({
         </div>
       )}
 
-      {mode === "preview" && preview && (
+      {(mode === "preview" || mode === "assessing") && preview && (
         <div className="space-y-3">
           <div className="overflow-hidden border border-line bg-bg-1">
             <img
@@ -265,26 +327,41 @@ export function CapturePanel({
               Source · <span className="text-fg">in-browser (canvas)</span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={submitInPageCapture}
-              disabled={uploading}
-              className={cn(
-                "inline-flex items-center gap-2 bg-accent px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940] disabled:bg-accent/40",
-              )}
-            >
-              {uploading ? "Uploading…" : "Submit capture ↗"}
-            </button>
-            <button
-              type="button"
-              onClick={retake}
-              disabled={uploading}
-              className="inline-flex items-center gap-2 border border-line-strong px-4 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-colors hover:bg-bg-2"
-            >
-              <RotateCcw className="!size-3" strokeWidth={2} /> Retake
-            </button>
-          </div>
+
+          {pendingAssessment && (
+            <AssessmentFeedback
+              assessment={assessment}
+              loading={assessmentStatus === "pending"}
+              onRetake={
+                assessmentStatus === "needs_retake"
+                  ? clearAssessmentAndRetake
+                  : undefined
+              }
+            />
+          )}
+
+          {!pendingAssessment && (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={submitInPageCapture}
+                disabled={uploading}
+                className={cn(
+                  "inline-flex items-center gap-2 bg-accent px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940] disabled:bg-accent/40",
+                )}
+              >
+                {uploading ? "Uploading…" : "Submit capture ↗"}
+              </button>
+              <button
+                type="button"
+                onClick={retake}
+                disabled={uploading}
+                className="inline-flex items-center gap-2 border border-line-strong px-4 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-colors hover:bg-bg-2"
+              >
+                <RotateCcw className="!size-3" strokeWidth={2} /> Retake
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -317,6 +394,18 @@ export function CapturePanel({
         <div className="border border-line bg-bg-1 p-4 text-center font-mono text-[11px] uppercase tracking-[0.16em] text-fg-dim">
           UPLOADING…
         </div>
+      )}
+
+      {mode === "assessing" && !preview && (
+        <AssessmentFeedback
+          assessment={assessment}
+          loading={assessmentStatus === "pending"}
+          onRetake={
+            assessmentStatus === "needs_retake"
+              ? clearAssessmentAndRetake
+              : undefined
+          }
+        />
       )}
 
       <input

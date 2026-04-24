@@ -1,7 +1,14 @@
 import { ChevronLeft, ChevronRight, Info, X } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 
+import {
+  AssessmentFeedback,
+  deriveStatus,
+  ShotStatusPill,
+  useAssessmentPolling,
+  type ShotStatus,
+} from "@/components/inspector/AssessmentFeedback";
 import { DEMO_JOBSITE_GPS } from "@/lib/hardcoded";
 import type { Draw, PhotoGuidanceShot, Project } from "@/lib/types";
 import { DISCIPLINE_LABEL } from "@/lib/types";
@@ -51,6 +58,8 @@ export function MobileShotRunner({
   clientHintedCount,
   device,
   onOpenSheet,
+  shotStatus,
+  onShotResolved,
 }: {
   project: Project | undefined;
   draw: Draw | undefined;
@@ -60,14 +69,19 @@ export function MobileShotRunner({
   clientHintedCount: number;
   device: CaptureDevice;
   onOpenSheet: () => void;
+  shotStatus: Record<string, ShotStatus>;
+  onShotResolved: (shotId: string, status: ShotStatus) => void;
 }) {
   const [index, setIndex] = useState(0);
   const [status, setStatus] = useState<
     | { kind: "idle" }
     | { kind: "uploading" }
-    | { kind: "done"; message: string }
     | { kind: "error"; message: string }
   >({ kind: "idle" });
+  const [pendingUpload, setPendingUpload] = useState<{
+    shotId: string;
+    photoDocumentId: string;
+  } | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -76,12 +90,16 @@ export function MobileShotRunner({
 
   const upload = useUploadPhotos(project?._id ?? "", {
     onSuccess: (res) => {
-      setStatus({
-        kind: "done",
-        message: `Shot uploaded · ${res.documents.length} received`,
-      });
-      window.setTimeout(() => setStatus({ kind: "idle" }), 2200);
-      setIndex((prev) => (prev + 1 < shots.length ? prev + 1 : prev));
+      const currentShot = shots[index];
+      const doc = res.documents[0];
+      if (currentShot && doc) {
+        onShotResolved(currentShot.shotId, "pending");
+        setPendingUpload({
+          shotId: currentShot.shotId,
+          photoDocumentId: doc._id,
+        });
+      }
+      setStatus({ kind: "idle" });
     },
     onError: (err) =>
       setStatus({
@@ -89,6 +107,34 @@ export function MobileShotRunner({
         message: `${err.status} · ${err.body.slice(0, 120)}`,
       }),
   });
+
+  const assessmentQuery = useAssessmentPolling(
+    project?._id,
+    pendingUpload?.photoDocumentId,
+    Boolean(pendingUpload),
+  );
+  const assessment = assessmentQuery.data?.assessment ?? null;
+
+  useEffect(() => {
+    if (!pendingUpload) return;
+    if (!assessment) return;
+    const resolved = deriveStatus(assessment);
+    onShotResolved(pendingUpload.shotId, resolved);
+    if (resolved === "passed") {
+      setIndex((prev) => (prev + 1 < shots.length ? prev + 1 : prev));
+    }
+    setPendingUpload(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessment, pendingUpload?.shotId]);
+
+  const passedCount = useMemo(
+    () => Object.values(shotStatus).filter((s) => s === "passed").length,
+    [shotStatus],
+  );
+  const needsRetakeCount = useMemo(
+    () => Object.values(shotStatus).filter((s) => s === "needs_retake").length,
+    [shotStatus],
+  );
 
   async function sendFile(file: File) {
     if (!project?._id) return;
@@ -113,6 +159,19 @@ export function MobileShotRunner({
   const uploading = status.kind === "uploading";
   const canGoPrev = index > 0;
   const canGoNext = index < shots.length - 1;
+  const awaitingAssessment =
+    Boolean(pendingUpload) && pendingUpload?.shotId === shot?.shotId;
+  const currentStatus: ShotStatus | undefined = shot
+    ? shotStatus[shot.shotId]
+    : undefined;
+  const activeAssessment =
+    awaitingAssessment && shot ? assessment : null;
+  const needsRetake = currentStatus === "needs_retake";
+
+  function handleRetake() {
+    if (!shot) return;
+    cameraRef.current?.click();
+  }
 
   return (
     <div className="flex h-[100dvh] flex-col bg-bg text-fg">
@@ -156,19 +215,33 @@ export function MobileShotRunner({
                 ).padStart(2, "0")}`}
           </div>
         </div>
-        <div className="h-1 flex-[2] overflow-hidden bg-bg-3">
+        <div className="relative h-1 flex-[2] overflow-hidden bg-bg-3">
           <div
-            className="h-full bg-accent transition-[width]"
+            className="absolute inset-y-0 left-0 bg-success transition-[width]"
             style={{
               width:
                 shots.length === 0
                   ? "0%"
-                  : `${Math.min(100, (capturedCount / shots.length) * 100)}%`,
+                  : `${Math.min(100, (passedCount / shots.length) * 100)}%`,
             }}
           />
+          {needsRetakeCount > 0 && (
+            <div
+              className="absolute inset-y-0 right-0 bg-danger transition-[width]"
+              style={{
+                width: `${Math.min(
+                  100,
+                  (needsRetakeCount / shots.length) * 100,
+                )}%`,
+              }}
+            />
+          )}
         </div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
-          {capturedCount} · captured
+        <div className="flex flex-col items-end gap-0.5 font-mono text-[10px] uppercase tracking-[0.14em]">
+          <span className="text-success">{passedCount} passed</span>
+          {needsRetakeCount > 0 && (
+            <span className="text-danger">{needsRetakeCount} retake</span>
+          )}
         </div>
       </div>
 
@@ -178,14 +251,18 @@ export function MobileShotRunner({
         ) : shots.length === 0 ? (
           <EmptyShots hasDraw={Boolean(draw)} />
         ) : shot ? (
-          <ShotCard shot={shot} index={index} />
+          <ShotCard shot={shot} index={index} statusPill={currentStatus} />
         ) : null}
 
-        {status.kind === "done" && (
-          <div className="mt-4 border-l-2 border-success bg-bg-1 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-success">
-            {status.message}
-          </div>
+        {(awaitingAssessment || needsRetake) && (
+          <AssessmentFeedback
+            className="mt-4"
+            assessment={activeAssessment}
+            loading={awaitingAssessment && !activeAssessment}
+            onRetake={needsRetake ? handleRetake : undefined}
+          />
         )}
+
         {status.kind === "error" && (
           <div className="mt-4 border-l-2 border-danger bg-bg-1 px-4 py-3 font-mono text-[11px] uppercase tracking-[0.14em] text-danger">
             {status.message}
@@ -205,15 +282,35 @@ export function MobileShotRunner({
         </button>
         <button
           type="button"
-          onClick={() => cameraRef.current?.click()}
-          disabled={uploading || !project?._id || shots.length === 0}
+          onClick={() => {
+            if (needsRetake) handleRetake();
+            else cameraRef.current?.click();
+          }}
+          disabled={
+            uploading ||
+            awaitingAssessment ||
+            !project?._id ||
+            shots.length === 0
+          }
           className={cn(
-            "flex h-14 flex-1 items-center justify-center gap-2 bg-accent font-mono text-[13px] font-bold uppercase tracking-[0.18em] text-black transition-colors active:bg-[#ff8940]",
-            (uploading || !project?._id || shots.length === 0) &&
+            "flex h-14 flex-1 items-center justify-center gap-2 font-mono text-[13px] font-bold uppercase tracking-[0.18em] transition-colors",
+            needsRetake
+              ? "bg-danger text-black active:bg-danger/80"
+              : "bg-accent text-black active:bg-[#ff8940]",
+            (uploading ||
+              awaitingAssessment ||
+              !project?._id ||
+              shots.length === 0) &&
               "bg-accent/40 text-black/50",
           )}
         >
-          {uploading ? "UPLOADING…" : "TAP TO CAPTURE"}
+          {uploading
+            ? "UPLOADING…"
+            : awaitingAssessment
+              ? "ASSESSING…"
+              : needsRetake
+                ? "RETAKE"
+                : "TAP TO CAPTURE"}
         </button>
         <button
           type="button"
@@ -229,7 +326,8 @@ export function MobileShotRunner({
       <footer className="flex items-center justify-between border-t border-line bg-bg-1 px-4 py-2 font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
         <span>Device · {deviceLabel(device)}</span>
         <span>
-          <span className="text-success">{capturedCount}</span> verified ·{" "}
+          <span className="text-success">{passedCount}</span> passed ·{" "}
+          <span className="text-fg-muted">{capturedCount}</span> uploaded ·{" "}
           <span className="text-warn">{clientHintedCount}</span> hinted
         </span>
       </footer>
@@ -249,16 +347,21 @@ export function MobileShotRunner({
 function ShotCard({
   shot,
   index,
+  statusPill,
 }: {
   shot: PhotoGuidanceShot;
   index: number;
+  statusPill?: ShotStatus;
 }) {
   return (
     <div className="space-y-5">
       <div>
-        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-muted">
-          #{String(index + 1).padStart(2, "0")} ·{" "}
-          {DISCIPLINE_LABEL[shot.discipline]}
+        <div className="flex items-center justify-between gap-2">
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-muted">
+            #{String(index + 1).padStart(2, "0")} ·{" "}
+            {DISCIPLINE_LABEL[shot.discipline]}
+          </div>
+          <ShotStatusPill status={statusPill} size="xs" />
         </div>
         <h1 className="mt-2 text-[22px] font-extrabold leading-[1.15] tracking-tight text-fg">
           {shot.target}
@@ -275,6 +378,17 @@ function ShotCard({
           </Spec>
         )}
       </dl>
+
+      {shot.proofOfLocation && (
+        <div className="border-l-2 border-accent bg-bg-1 px-4 py-3">
+          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-accent">
+            Prove it's this element
+          </div>
+          <p className="mt-1 text-[13px] leading-[1.45] text-fg">
+            {shot.proofOfLocation}
+          </p>
+        </div>
+      )}
 
       {shot.referenceLineNumbers.length > 0 && (
         <div>

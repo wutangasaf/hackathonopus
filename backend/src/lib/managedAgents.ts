@@ -23,7 +23,46 @@ Recommendation guidance:
 - HOLD: material anomaly; fund release should wait for re-inspection.
 - REJECT: fraud indicators, safety failures, or unapproved scope.
 
-Style: concise. Ground every claim in evidence returned by the tools. Do not speculate about things you didn't see in tool output.`;
+Style: concise. Ground every claim in evidence returned by the tools. Do not speculate about things you didn't see in tool output.
+
+## Few-shot 1 — clean APPROVE (no re-inspection needed)
+
+Tool sequence: read_draw_state → read_photo_evidence → record_finding.
+Draw 02, milestone 2 (foundation + slab). GapReport overall=ON_TRACK. Every requiredCompletion element VERIFIED with photoCount≥1 and bestConfidence≥0.82. No safetyFlags, no unapprovedObservations. SOV findings all flag="ok" (variances within ±3%).
+
+record_finding call:
+{
+  "severity": "INFO",
+  "category": "evidence_complete",
+  "narrative": "Draw 02 foundation + slab claims reconcile cleanly. All 7 required elements verified with high confidence (0.82–0.94) across 12 photos. No safety flags, no scope deviations, no SOV variances above ±3%. Nothing for the bank officer to chase.",
+  "evidence": ["perElement: 7 VERIFIED / 0 PARTIAL / 0 MISSING / 0 DEVIATED / 0 UNVERIFIED", "sovLineFindings: 7/7 flag=ok"],
+  "recommendation": "APPROVE"
+}
+(No generate_reinspection_request call — there's nothing to re-shoot.)
+
+## Few-shot 2 — HOLD with targeted ReinspectionRequest
+
+Tool sequence: read_draw_state → read_photo_evidence → read_plan_scope → generate_reinspection_request → record_finding.
+Draw 04, milestone 4 (MEP rough-in). GapReport shows one DEVIATED element (panel P-2 breaker count differs from approved) and one MISSING element (HVAC condensate drain at roof — no photo coverage). The contractor is claiming 100% on line 26-200 but the DEVIATED finding has bestConfidence=0.88. One photo carries a safetyFlag "unguarded roof-edge opening near HVAC stand".
+
+generate_reinspection_request call (targeted 3-shot packet):
+{
+  "shots": [
+    { "shotId": "reins-panel-p2", "discipline": "ELECTRICAL", "target": "Panel P-2 circuit directory — close perpendicular shot with all 24 circuits legible, verifying line 26-200 at 100%", "framing": "close", "angle": "perpendicular at 0.5m", "lighting": "phone flashlight on, no camera flash", "proofOfLocation": "panel tag 'P-2' visible in frame", "referenceLineNumbers": ["26-200"] },
+    { "shotId": "reins-hvac-condensate", "discipline": "PLUMBING", "target": "Condensate drain at AHU-1 on roof, verifying line 23-130", "framing": "wide+close pair", "angle": "perpendicular elevation + overhead", "lighting": "daylight", "safety": "roof-edge fall protection required before approaching stand — contractor to rig guardrail first", "proofOfLocation": "AHU-1 nameplate + roof-hatch label in frame", "referenceLineNumbers": ["23-130"] },
+    { "shotId": "reins-roof-safety", "discipline": "ARCHITECTURE", "target": "Roof-edge opening near HVAC stand — evidence that fall protection is installed before trades return", "framing": "wide", "angle": "perpendicular elevation from safe distance", "lighting": "daylight", "proofOfLocation": "roof hatch + guardrail / cover in same frame", "referenceLineNumbers": [] }
+  ],
+  "narrative": "Draw 04 hold grounds: panel P-2 breaker count deviates from approved submittal (line 26-200); HVAC condensate drain at AHU-1 has no photo coverage (line 23-130); one photo shows an unguarded roof-edge opening that must be addressed before trades return."
+}
+
+record_finding call:
+{
+  "severity": "HIGH",
+  "category": "scope_deviation_and_coverage_gap",
+  "narrative": "Two material findings block draw 04. Panel P-2 circuit directory photo shows a breaker count inconsistent with the approved P-2 schedule — this is a scope deviation, not a documentation gap. HVAC condensate drain line 23-130 claimed at 80% has zero photo coverage. Safety: one photo shows an unguarded roof opening near the AHU stand — fall protection must be restored before the re-inspection is executed.",
+  "evidence": ["perElement: panel-p2 DEVIATED @ 0.88 confidence", "perElement: ahu-1-condensate MISSING (0 photos)", "safetyFlags: unguarded_roof_edge_opening near AHU-1"],
+  "recommendation": "HOLD"
+}`;
 
 let client: Anthropic | null = null;
 

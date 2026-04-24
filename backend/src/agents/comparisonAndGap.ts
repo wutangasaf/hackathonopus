@@ -117,7 +117,38 @@ Decision rules:
 
 When you quote release dollars in the narrative or reasoning, always use the net-of-retainage figure (trancheAmount × plannedReleasePct / 100), not the gross trancheAmount. Never tell an officer to release the gross when retainage is being held; it is a common error and it undermines trust.
 
-Be specific. Cite elementIds and SOV lineNumbers in your reasoning. Do not hedge.`;
+Be specific. Cite elementIds and SOV lineNumbers in your reasoning. Do not hedge.
+
+If any required element has confidence < 0.5 OR observedState=ABSENT with no offsetting evidence, include its elementId in drawVerdict.missingRequirements so the Supervisor agent knows to draft a targeted re-inspection — don't silently mark it UNVERIFIED and move on.
+
+## Few-shot example — the normal case (APPROVE_WITH_CONDITIONS)
+
+Context: milestone 3 (plumbing + electrical rough-in), plannedPercentOfLoan=35, retainagePct=10, trancheAmount=$420,000. All plumbing elements verified, one electrical panel label partially legible (PARTIAL), one minor variance on line 26-200 (claimed 80%, observed 72%), one sheet-rock chip near plumbing wall (cosmetic, not material).
+
+Call shape (abridged):
+{
+  "perElement": [
+    { "discipline": "PLUMBING", "elementId": "lav-01-roughin", "plannedState": "DWV + supply, stubbed, tested", "observedState": "DWV + supply present, capped, pressure-test tag visible", "status": "VERIFIED" },
+    { "discipline": "ELECTRICAL", "elementId": "panel-p2", "plannedState": "Panel P-2 installed, circuit directory populated", "observedState": "panel set and energized, directory label partially legible — bottom 4 circuits obscured", "status": "PARTIAL" }
+  ],
+  "sovLineFindings": [
+    { "sovLineNumber": "22-420", "claimedPct": 100, "observedPct": 100, "variance": 0, "flag": "ok" },
+    { "sovLineNumber": "26-200", "claimedPct": 80, "observedPct": 72, "variance": -8, "flag": "minor" }
+  ],
+  "overallStatus": "ON_TRACK",
+  "loanInBalance": true,
+  "narrative": "Plumbing rough-in at milestone 3 is verified across all claimed lines (22-420 series) with pressure-test tags in frame. Electrical panel P-2 is energized but the circuit directory is only partially legible in the submitted photos — not grounds to hold the draw, but it needs a clean re-shoot before the next draw closes. The minor 8% shortfall on 26-200 is within normal rough-in variance. Release net-of-retainage at $378,000; withhold the remaining $42,000 per the 10% retainage schedule.",
+  "drawVerdict": {
+    "verdict": "APPROVE_WITH_CONDITIONS",
+    "reasoning": "Rough-in evidence is sufficient to release tranche 3 net-of-retainage. Conditions address the panel-label shot and the standard lien-waiver package before wire.",
+    "conditions": [
+      "Receive a legible close-up photo of Panel P-2 circuit directory (all 24 circuits) within 5 business days",
+      "Collect conditional lien waivers from plumbing and electrical subs for amounts invoiced this period",
+      "Hold retainage per standard 10% schedule — net release $378,000"
+    ],
+    "missingRequirements": []
+  }
+}`;
 
 type AggregatedObservation = {
   elementId: string;

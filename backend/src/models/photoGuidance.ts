@@ -10,6 +10,7 @@ const shotSchema = new Schema(
     angle: { type: String, required: true },
     lighting: { type: String, required: true },
     safety: { type: String },
+    proofOfLocation: { type: String },
     referenceElementIds: [{ type: String }],
     referenceLineNumbers: [{ type: String }],
   },

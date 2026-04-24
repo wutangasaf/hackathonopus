@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { Eyebrow } from "@/components/blocks/Eyebrow";
+import { ShotStatusPill, type ShotStatus } from "@/components/inspector/AssessmentFeedback";
 import { PhotoGuidance } from "@/components/uploads/PhotoGuidance";
 import { useLatestApprovedDraw } from "@/services/draws";
 import { usePhotoGuidance, usePhotos } from "@/services/photos";
@@ -18,6 +19,7 @@ export default function InspectorCapture() {
     null,
   );
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [shotStatus, setShotStatus] = useState<Record<string, ShotStatus>>({});
 
   const project = useProject(projectId);
   const draw = useLatestApprovedDraw(projectId);
@@ -29,6 +31,12 @@ export default function InspectorCapture() {
   const photos = usePhotos(projectId);
 
   const shots = guidance.data?.shotList ?? [];
+  const selectedShotId =
+    selectedShotIndex !== null ? shots[selectedShotIndex]?.shotId : undefined;
+
+  const onShotResolved = useCallback((shotId: string, status: ShotStatus) => {
+    setShotStatus((s) => ({ ...s, [shotId]: status }));
+  }, []);
 
   const shotLabel = useMemo(() => {
     if (selectedShotIndex === null) return undefined;
@@ -59,6 +67,8 @@ export default function InspectorCapture() {
           clientHintedCount={hintedCount}
           device={device}
           onOpenSheet={() => setSheetOpen(true)}
+          shotStatus={shotStatus}
+          onShotResolved={onShotResolved}
         />
         <MobileSheet
           open={sheetOpen}
@@ -125,6 +135,7 @@ export default function InspectorCapture() {
                 onSelect={(i) =>
                   setSelectedShotIndex((prev) => (prev === i ? null : i))
                 }
+                shotStatus={shotStatus}
               />
             </div>
 
@@ -134,8 +145,10 @@ export default function InspectorCapture() {
                 <div className="mt-4">
                   <CapturePanel
                     projectId={projectId}
+                    shotId={selectedShotId}
                     shotLabel={shotLabel}
                     disabled={device !== "phone"}
+                    onShotResolved={onShotResolved}
                   />
                 </div>
               </section>
@@ -174,10 +187,12 @@ function ShotListSelectable({
   projectId,
   selectedIndex,
   onSelect,
+  shotStatus,
 }: {
   projectId: string;
   selectedIndex: number | null;
   onSelect: (index: number) => void;
+  shotStatus: Record<string, ShotStatus>;
 }) {
   const draw = useLatestApprovedDraw(projectId);
   const guidance = usePhotoGuidance(
@@ -244,11 +259,14 @@ function ShotListSelectable({
                   </div>
                 )}
               </div>
-              {active && (
-                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-accent">
-                  Selected
-                </span>
-              )}
+              <div className="flex flex-col items-end gap-1">
+                <ShotStatusPill status={shotStatus[shot.shotId]} />
+                {active && (
+                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-accent">
+                    Selected
+                  </span>
+                )}
+              </div>
             </button>
           </li>
         );
