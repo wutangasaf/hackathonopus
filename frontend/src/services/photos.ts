@@ -53,14 +53,15 @@ export function usePhotoDetail(
 }
 
 /**
- * Photo guidance (Agent 4). First call takes 30–60s while the agent
- * runs; cached calls are <200ms. Pass `regenerate: true` to force a
- * fresh run. 404 when no plan or no active milestone — we surface that
- * as `null` so the screen can render an empty state instead of throwing.
+ * Photo guidance (Agent 4). Keyed to the approved Draw. First call takes
+ * 30–60s while the agent runs; cached calls are <200ms. Pass
+ * `regenerate: true` to force a fresh run. 404 (no approved draw) and
+ * 409 (draw not yet approved) both surface as `null` so the screen can
+ * render an empty state instead of throwing.
  */
 export function usePhotoGuidance(
   projectId: string | undefined,
-  opts: { milestoneId?: string; regenerate?: boolean } = {},
+  opts: { drawId?: string; regenerate?: boolean } = {},
   options?: Omit<
     UseQueryOptions<PhotoGuidance | null, ApiError>,
     "queryKey" | "queryFn" | "enabled"
@@ -69,13 +70,13 @@ export function usePhotoGuidance(
   return useQuery<PhotoGuidance | null, ApiError>({
     queryKey: queryKeys.photos.guidance(
       projectId ?? "__none__",
-      opts.milestoneId,
+      opts.drawId,
     ),
     queryFn: async () => {
       try {
         return await api.getPhotoGuidance(projectId as string, opts);
       } catch (err) {
-        if (isNotFound(err)) return null;
+        if (isNotFoundOrConflict(err)) return null;
         throw err;
       }
     },
@@ -86,11 +87,25 @@ export function usePhotoGuidance(
   });
 }
 
-export type UploadPhotosInput = { files: File[] };
+export type PhotoUploadHint = {
+  capturedAt?: string;
+  lat?: number;
+  lon?: number;
+  captureSource?:
+    | "phone_camera"
+    | "desktop_camera"
+    | "native_upload"
+    | "drone"
+    | "iot";
+};
+
+export type UploadPhotosInput = { files: File[]; hint?: PhotoUploadHint };
 
 /**
  * Upload site photos. Invalidates the photos list and the runs list
- * (Agents 5/6 kick off fire-and-forget for each new photo).
+ * (Agents 5/6 kick off fire-and-forget for each new photo). Hint carries
+ * client-captured timestamp/GPS so in-browser captures (which have no
+ * EXIF baked in) still carry capture metadata.
  */
 export function useUploadPhotos(
   projectId: string,
@@ -102,7 +117,7 @@ export function useUploadPhotos(
 ) {
   const qc = useQueryClient();
   return useMutation<UploadPhotosResponse, ApiError, UploadPhotosInput>({
-    mutationFn: ({ files }) => api.uploadPhotos(projectId, files),
+    mutationFn: ({ files, hint }) => api.uploadPhotos(projectId, files, hint),
     ...options,
     onSuccess: (data, vars, ctx, meta) => {
       qc.invalidateQueries({ queryKey: queryKeys.photos.all(projectId) });
@@ -135,11 +150,7 @@ export function useDeletePhoto(
   });
 }
 
-function isNotFound(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "status" in err &&
-    (err as { status: number }).status === 404
-  );
+function isNotFoundOrConflict(err: unknown): boolean {
+  const s = (err as { status?: number } | null | undefined)?.status;
+  return s === 404 || s === 409;
 }

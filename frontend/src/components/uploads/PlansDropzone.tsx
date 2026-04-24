@@ -1,5 +1,16 @@
 import { useRef, useState, type DragEvent } from "react";
 
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { useUploadPlans } from "@/services/plans";
 
@@ -7,6 +18,7 @@ export function PlansDropzone({ projectId }: { projectId: string }) {
   const fileInput = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [lastCount, setLastCount] = useState<number | null>(null);
+  const [templateOpen, setTemplateOpen] = useState(false);
 
   const upload = useUploadPlans(projectId, {
     onSuccess: (res) => {
@@ -64,6 +76,107 @@ export function PlansDropzone({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-muted">
+          Recurring counterparty format? Skip the LLM step.
+        </div>
+        <Dialog open={templateOpen} onOpenChange={setTemplateOpen}>
+          <DialogTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-auto gap-2 rounded-none border-line-strong bg-bg-1 px-3 py-2 font-mono text-[11px] uppercase tracking-[0.12em] text-fg hover:bg-bg-2"
+            >
+              Use a template
+              <Badge
+                variant="secondary"
+                className="rounded-none border border-line bg-bg-2 px-1.5 py-0 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-fg-dim"
+              >
+                Preview
+              </Badge>
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="rounded-none border border-line bg-bg-1 text-fg sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle className="text-2xl font-extrabold tracking-tight2">
+                Template service — preview
+              </DialogTitle>
+              <DialogDescription className="font-mono text-[11px] uppercase tracking-mono text-fg-muted">
+                Coming soon · not yet shipped
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="mt-2 space-y-5 text-[13px] leading-[1.55] text-fg-dim">
+              <p>
+                For recurring counterparty formats (same GC's SOV, same
+                architect's titleblock, same bank's draw schedule), Plumbline
+                can skip the LLM extraction step and parse deterministically
+                against a saved template.
+              </p>
+
+              <div>
+                <div className="mb-2 font-mono text-[10px] uppercase tracking-mono text-fg-muted">
+                  Mapped templates on file (mock)
+                </div>
+                <ul className="divide-y divide-line border border-line-strong">
+                  <li className="flex items-baseline justify-between gap-3 px-3 py-2">
+                    <span className="font-mono text-[12px] text-fg">
+                      BigGC Inc. · SOV · v3
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-mono text-fg-muted">
+                      42 line items · last used 14d ago
+                    </span>
+                  </li>
+                  <li className="flex items-baseline justify-between gap-3 px-3 py-2">
+                    <span className="font-mono text-[12px] text-fg">
+                      Smith &amp; Partners · Titleblock · v1
+                    </span>
+                    <span className="font-mono text-[10px] uppercase tracking-mono text-fg-muted">
+                      6 projects
+                    </span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border border-accent/40 bg-accent-dim px-3 py-2">
+                <div className="font-mono text-[10px] uppercase tracking-mono text-accent">
+                  Match detected in your upload (mock)
+                </div>
+                <div className="mt-1 flex items-baseline justify-between gap-3">
+                  <span className="font-mono text-[12px] text-fg">
+                    Smith &amp; Partners · Titleblock · v1
+                  </span>
+                  <span className="font-mono text-[11px] font-semibold text-accent">
+                    94% confidence
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="mt-2 gap-2 sm:flex-row-reverse">
+              <Button
+                type="button"
+                onClick={() => setTemplateOpen(false)}
+                className={cn(
+                  "h-auto rounded-none border border-transparent bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-black shadow-none",
+                  "hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.15)]",
+                )}
+              >
+                Apply template (mock)
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => setTemplateOpen(false)}
+                className="h-auto rounded-none border border-line-strong px-6 py-3 font-mono text-[11px] uppercase tracking-eyebrow text-fg hover:bg-bg-2"
+              >
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+
       <div
         role="button"
         tabIndex={0}

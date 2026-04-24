@@ -231,7 +231,7 @@ export default function Landing() {
             className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-16"
           >
             <motion.div variants={fadeUp}>
-              <Eyebrow>Built with Opus 4.7 · Apr 2026</Eyebrow>
+              <Eyebrow>Built with Opus 4.7 · Hackathon preview · Apr 2026</Eyebrow>
               <h1 className="mt-6 break-words font-black leading-[0.88] tracking-[-0.055em] text-fg text-[clamp(44px,9.4vw,148px)]">
                 Build
                 <br />
@@ -241,30 +241,61 @@ export default function Landing() {
                 <br />
                 on <span className="text-accent">proof</span>.
               </h1>
-              <p className="mt-5 max-w-[540px] text-fg-dim text-[clamp(15px,1.35vw,19px)] leading-[1.55]">
-                AI co-pilot for bank-financed construction. Upload approved
-                plans, the finance plan with milestones, and phone photos.
-                Plumbline produces the draw verdict — citing G703 line items,
-                flagging unapproved deviations — in minutes, not weeks.
+              <p className="mt-5 max-w-[560px] text-fg-dim text-[clamp(15px,1.35vw,19px)] leading-[1.55]">
+                AI co-pilot for bank-financed construction. Plumbline ingests
+                the full plan set — drawings at scale, BoQ, specifications,
+                RFIs, COs — binds it to an AIA G702/G703 schedule of values,
+                and reconciles both against authenticated jobsite evidence.
+                The draw verdict cites every SOV line, in minutes.
+              </p>
+              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-l-2 border-accent pl-4">
+                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-dim">
+                  Capture channels
+                </span>
+                <span className="inline-flex items-center gap-[6px] font-mono text-[11px] uppercase tracking-[0.12em] text-fg">
+                  <i
+                    aria-hidden
+                    className="inline-block h-[6px] w-[6px] bg-accent"
+                    style={{ boxShadow: "0 0 8px var(--accent-glow)" }}
+                  />
+                  Phone · live
+                </span>
+                <span className="inline-flex items-center gap-[6px] font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
+                  <i aria-hidden className="inline-block h-[6px] w-[6px] border border-fg-muted" />
+                  Drone · next
+                </span>
+                <span className="inline-flex items-center gap-[6px] font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
+                  <i aria-hidden className="inline-block h-[6px] w-[6px] border border-fg-muted" />
+                  IoT telemetry · next
+                </span>
+              </div>
+              <p className="mt-3 max-w-[560px] font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
+                Hash-chained capture · Device attestation · Geo &amp; time-signed
               </p>
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   to="/projects"
                   className="inline-flex items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
                 >
-                  Start a project <span aria-hidden>↗</span>
+                  Bank · start a project <span aria-hidden>↗</span>
+                </Link>
+                <Link
+                  to="/contractor"
+                  className="inline-flex items-center gap-2.5 border border-line-strong px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-all hover:border-fg-dim hover:bg-bg-1"
+                >
+                  Contractor · submit a draw <span aria-hidden>↗</span>
                 </Link>
                 <a
                   href="#pipeline"
-                  className="inline-flex items-center gap-2.5 border border-line-strong px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-all hover:border-fg-dim hover:bg-bg-1"
+                  className="inline-flex items-center gap-2.5 px-2 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg-dim transition-colors hover:text-fg"
                 >
                   See the pipeline
                 </a>
               </div>
-              <dl className="mt-10 flex max-w-[540px] flex-wrap gap-8 border-t border-line pt-5">
-                <HeroStat value="7" label="Agents, end-to-end" />
-                <HeroStat value="4" label="Disciplines read" />
-                <HeroStat value="<60s" label="Report latency" />
+              <dl className="mt-10 flex max-w-[560px] flex-wrap gap-8 border-t border-line pt-5">
+                <HeroStat value="7" label="Narrow agents, end-to-end" />
+                <HeroStat value="4" label="Disciplines reconciled" />
+                <HeroStat value="<60s" label="Draw verdict latency" />
               </dl>
             </motion.div>
             <motion.div variants={fadeUp}>
@@ -575,16 +606,22 @@ export default function Landing() {
             photos as the build progresses. Get a signable draw verdict every
             milestone — in minutes.
           </p>
-          <div className="mt-8 flex justify-center gap-3">
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               to="/projects"
               className="inline-flex items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
             >
-              Start a project <span aria-hidden>↗</span>
+              Bank · start a project <span aria-hidden>↗</span>
+            </Link>
+            <Link
+              to="/contractor"
+              className="inline-flex items-center gap-2.5 border border-line-strong px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-all hover:border-fg-dim hover:bg-bg-1"
+            >
+              Contractor · submit a draw <span aria-hidden>↗</span>
             </Link>
             <a
               href="mailto:asafe79@gmail.com"
-              className="inline-flex items-center gap-2.5 border border-line-strong px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-all hover:border-fg-dim hover:bg-bg-1"
+              className="inline-flex items-center gap-2.5 px-3 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg-dim transition-colors hover:text-fg"
             >
               Talk to founders
             </a>

@@ -1,4 +1,6 @@
 import {
+  DISCIPLINES,
+  DISCIPLINE_LABEL,
   SHEET_ROLE_LABEL,
   type ClassifiedSheet,
   type Discipline,
@@ -103,7 +105,7 @@ export function SidePanel({
           type="number"
           min={0}
           max={100}
-          step={1}
+          step={0.1}
           value={milestone.plannedPercentOfLoan}
           onChange={(e) =>
             setMilestoneField(
@@ -133,6 +135,183 @@ export function SidePanel({
           className="mono-input"
         />
       </Field>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-dim">
+            Required completion · {milestone.requiredCompletion.length}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setMilestoneField(milestone.localId, "requiredCompletion", [
+                ...milestone.requiredCompletion,
+                { discipline: "ARCHITECTURE", elementKindOrId: "", minPct: 95 },
+              ])
+            }
+            className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted transition-colors hover:text-accent"
+          >
+            + Add
+          </button>
+        </div>
+        {milestone.requiredCompletion.length === 0 ? (
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+            Bank verifies nothing automatically for this milestone.
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-[2px]">
+            {milestone.requiredCompletion.map((rc, idx) => (
+              <li
+                key={idx}
+                className="grid grid-cols-[minmax(0,1fr)_68px_18px] gap-1 bg-bg p-1.5"
+              >
+                <select
+                  value={rc.discipline}
+                  onChange={(e) => {
+                    const next = [...milestone.requiredCompletion];
+                    next[idx] = {
+                      ...rc,
+                      discipline: e.target.value as Discipline,
+                    };
+                    setMilestoneField(
+                      milestone.localId,
+                      "requiredCompletion",
+                      next,
+                    );
+                  }}
+                  className="mono-input"
+                >
+                  {DISCIPLINES.map((d) => (
+                    <option key={d} value={d}>
+                      {DISCIPLINE_LABEL[d]}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={rc.elementKindOrId}
+                  placeholder="kind / id"
+                  onChange={(e) => {
+                    const next = [...milestone.requiredCompletion];
+                    next[idx] = { ...rc, elementKindOrId: e.target.value };
+                    setMilestoneField(
+                      milestone.localId,
+                      "requiredCompletion",
+                      next,
+                    );
+                  }}
+                  className="mono-input col-span-1 col-start-1 row-start-2"
+                />
+                <div className="col-start-2 row-start-2 flex items-center gap-1">
+                  <input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={rc.minPct}
+                    onChange={(e) => {
+                      const next = [...milestone.requiredCompletion];
+                      next[idx] = {
+                        ...rc,
+                        minPct: Number(e.target.value) || 0,
+                      };
+                      setMilestoneField(
+                        milestone.localId,
+                        "requiredCompletion",
+                        next,
+                      );
+                    }}
+                    className="mono-input"
+                    aria-label="Minimum percent"
+                  />
+                  <span className="font-mono text-[10px] text-fg-muted">%</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = milestone.requiredCompletion.filter(
+                      (_, i) => i !== idx,
+                    );
+                    setMilestoneField(
+                      milestone.localId,
+                      "requiredCompletion",
+                      next,
+                    );
+                  }}
+                  aria-label="Remove required completion"
+                  className="col-start-3 row-span-2 flex items-center justify-center font-mono text-[12px] text-fg-muted transition-colors hover:text-danger"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      <div>
+        <div className="flex items-center justify-between">
+          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-dim">
+            Required docs · {milestone.requiredDocs.length}
+          </span>
+          <button
+            type="button"
+            onClick={() =>
+              setMilestoneField(milestone.localId, "requiredDocs", [
+                ...milestone.requiredDocs,
+                "",
+              ])
+            }
+            className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted transition-colors hover:text-accent"
+          >
+            + Add
+          </button>
+        </div>
+        {milestone.requiredDocs.length === 0 ? (
+          <p className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+            No extra artifacts required beyond pinned plan pages.
+          </p>
+        ) : (
+          <ul className="mt-2 flex flex-col gap-[2px]">
+            {milestone.requiredDocs.map((doc, idx) => (
+              <li key={idx} className="flex items-center gap-1 bg-bg p-1.5">
+                <input
+                  type="text"
+                  value={doc}
+                  placeholder="e.g. inspector letter"
+                  onChange={(e) => {
+                    const next = [...milestone.requiredDocs];
+                    next[idx] = e.target.value;
+                    setMilestoneField(
+                      milestone.localId,
+                      "requiredDocs",
+                      next,
+                    );
+                  }}
+                  className="mono-input flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = milestone.requiredDocs.filter(
+                      (_, i) => i !== idx,
+                    );
+                    setMilestoneField(
+                      milestone.localId,
+                      "requiredDocs",
+                      next,
+                    );
+                  }}
+                  aria-label="Remove required doc"
+                  className="font-mono text-[12px] text-fg-muted transition-colors hover:text-danger"
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       <div>
         <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-dim">

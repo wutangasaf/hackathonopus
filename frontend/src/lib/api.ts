@@ -3,9 +3,12 @@ import type {
   CreateFinancePlanRequest,
   Discipline,
   DocumentRecord,
+  Draw,
+  DrawLine,
   FinancePlan,
   GapReport,
   Milestone,
+  PatchDrawLineRequest,
   PatchMilestoneRequest,
   PhotoDetailResponse,
   PhotoGuidance,
@@ -131,11 +134,11 @@ export const api = {
   // Photo guidance (Agent 4)
   getPhotoGuidance: (
     id: string,
-    opts: { milestoneId?: string; regenerate?: boolean } = {},
+    opts: { drawId?: string; regenerate?: boolean } = {},
   ) =>
     json<PhotoGuidance>(
       `/api/projects/${id}/photo-guidance${qs({
-        milestoneId: opts.milestoneId,
+        drawId: opts.drawId,
         regenerate: opts.regenerate ? 1 : undefined,
       })}`,
     ),
@@ -143,8 +146,37 @@ export const api = {
   // Photos
   listPhotos: (id: string) =>
     json<DocumentRecord[]>(`/api/projects/${id}/photos`),
-  uploadPhotos: (id: string, files: File[]) =>
-    upload<UploadPhotosResponse>(`/api/projects/${id}/photos`, files),
+  uploadPhotos: async (
+    id: string,
+    files: File[],
+    hint?: {
+      capturedAt?: string;
+      lat?: number;
+      lon?: number;
+      captureSource?:
+        | "phone_camera"
+        | "desktop_camera"
+        | "native_upload"
+        | "drone"
+        | "iot";
+    },
+  ): Promise<UploadPhotosResponse> => {
+    const fd = new FormData();
+    // Append sidecar fields BEFORE files — Fastify processes multipart
+    // parts in stream order and our backend needs the hint populated
+    // before it ingests each file.
+    if (hint?.capturedAt) fd.append("capturedAt", hint.capturedAt);
+    if (typeof hint?.lat === "number") fd.append("lat", String(hint.lat));
+    if (typeof hint?.lon === "number") fd.append("lon", String(hint.lon));
+    if (hint?.captureSource) fd.append("captureSource", hint.captureSource);
+    for (const f of files) fd.append("file", f);
+    const res = await fetch(`${BASE}/api/projects/${id}/photos`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) throw new ApiError(res.status, await res.text());
+    return (await res.json()) as UploadPhotosResponse;
+  },
   getPhoto: (projectId: string, photoId: string) =>
     json<PhotoDetailResponse>(
       `/api/projects/${projectId}/photos/${photoId}`,
@@ -162,6 +194,47 @@ export const api = {
     json<GapReport[]>(`/api/projects/${id}/reports`),
   getReport: (id: string, reportId: string) =>
     json<GapReport>(`/api/projects/${id}/reports/${reportId}`),
+
+  // Draws (contractor-facing G703 upload → review → approve)
+  uploadDraw: async (
+    id: string,
+    body: {
+      g703: File;
+      g702?: File;
+      periodStart?: string;
+      periodEnd?: string;
+    },
+  ): Promise<Draw> => {
+    const fd = new FormData();
+    fd.append("g703", body.g703);
+    if (body.g702) fd.append("g702", body.g702);
+    if (body.periodStart) fd.append("periodStart", body.periodStart);
+    if (body.periodEnd) fd.append("periodEnd", body.periodEnd);
+    const res = await fetch(`${BASE}/api/projects/${id}/draws`, {
+      method: "POST",
+      body: fd,
+    });
+    if (!res.ok) throw new ApiError(res.status, await res.text());
+    return (await res.json()) as Draw;
+  },
+  listDraws: (id: string) => json<Draw[]>(`/api/projects/${id}/draws`),
+  getDraw: (id: string, drawId: string) =>
+    json<Draw>(`/api/projects/${id}/draws/${drawId}`),
+  patchDrawLine: (
+    id: string,
+    drawId: string,
+    lineIndex: number,
+    patch: PatchDrawLineRequest,
+  ) =>
+    json<DrawLine>(
+      `/api/projects/${id}/draws/${drawId}/lines/${lineIndex}`,
+      { method: "PATCH", body: JSON.stringify(patch) },
+    ),
+  approveDraw: (id: string, drawId: string) =>
+    json<Draw>(`/api/projects/${id}/draws/${drawId}/approve`, {
+      method: "POST",
+      body: "{}",
+    }),
 
   // Agent runs
   listRuns: (id: string) => json<AgentRun[]>(`/api/projects/${id}/runs`),

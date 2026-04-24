@@ -8,7 +8,7 @@ import { DocumentModel } from "../models/document.js";
 import { PhotoAssessment } from "../models/photoAssessment.js";
 import { Observation } from "../models/observation.js";
 import { AgentRun } from "../models/agentRun.js";
-import { ingestMultipartFile } from "./upload.js";
+import { ingestMultipartFile, type ClientPhotoHint } from "./upload.js";
 import { parseObjectId } from "./util.js";
 import { kickoffPhotoPipeline } from "../agents/photoPipeline.js";
 
@@ -52,13 +52,43 @@ const photosRoutes: FastifyPluginAsync = async (app) => {
     const kickedOff: string[] = [];
     let gotAny = false;
 
+    // Sidecar hint fields. Browser in-page captures (getUserMedia + canvas)
+    // produce JPEGs without EXIF, so the client sends capturedAt / lat /
+    // lon / captureSource alongside the file. ingestMultipartFile merges
+    // them into exifMeta with source="client_hinted" when the bytes have
+    // no EXIF; otherwise the real EXIF stays authoritative.
+    const hint: ClientPhotoHint = {};
+
     for await (const part of req.parts()) {
+      if (part.type === "field") {
+        const v = typeof part.value === "string" ? part.value : "";
+        if (part.fieldname === "capturedAt" && v) hint.capturedAt = v;
+        else if (part.fieldname === "lat" && v) {
+          const n = Number(v);
+          if (Number.isFinite(n)) hint.lat = n;
+        } else if (part.fieldname === "lon" && v) {
+          const n = Number(v);
+          if (Number.isFinite(n)) hint.lon = n;
+        } else if (part.fieldname === "captureSource" && v) {
+          if (
+            v === "phone_camera" ||
+            v === "desktop_camera" ||
+            v === "native_upload" ||
+            v === "drone" ||
+            v === "iot"
+          ) {
+            hint.captureSource = v;
+          }
+        }
+        continue;
+      }
       if (part.type !== "file") continue;
       gotAny = true;
       const { document, duplicate } = await ingestMultipartFile(
         part,
         "PHOTO",
         projectId,
+        hint,
       );
       documents.push(document);
       if (!duplicate) {

@@ -1,10 +1,11 @@
 import { RefreshCcw } from "lucide-react";
+import { Link } from "react-router-dom";
 
 import { Eyebrow } from "@/components/blocks/Eyebrow";
-import type { Discipline, PhotoGuidanceShot } from "@/lib/types";
+import type { Discipline, Draw, PhotoGuidanceShot } from "@/lib/types";
 import { DISCIPLINE_LABEL } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { useCurrentMilestone } from "@/services/financePlan";
+import { useLatestApprovedDraw } from "@/services/draws";
 import { usePhotoGuidance } from "@/services/photos";
 import { queryKeys } from "@/services/queryKeys";
 import { useQueryClient } from "@tanstack/react-query";
@@ -18,38 +19,39 @@ const DISCIPLINE_DOT: Record<Discipline, string> = {
 
 export function PhotoGuidance({ projectId }: { projectId: string }) {
   const qc = useQueryClient();
-  const currentMilestone = useCurrentMilestone(projectId);
-  const milestoneId = currentMilestone.data?._id;
+  const draw = useLatestApprovedDraw(projectId);
+  const drawId = draw.data?._id;
 
-  const guidance = usePhotoGuidance(projectId, { milestoneId });
+  const guidance = usePhotoGuidance(
+    projectId,
+    { drawId },
+    { enabled: Boolean(drawId) },
+  );
 
   const regenerate = usePhotoGuidance(
     projectId,
-    { milestoneId, regenerate: true },
+    { drawId, regenerate: true },
     { enabled: false },
   );
 
   async function onRegenerate() {
     await qc.invalidateQueries({
-      queryKey: queryKeys.photos.guidance(projectId, milestoneId),
+      queryKey: queryKeys.photos.guidance(projectId, drawId),
     });
     await regenerate.refetch();
   }
 
-  // Nothing to guide against.
-  if (currentMilestone.isLoading) return null;
-  if (!currentMilestone.data) {
-    return (
-      <div className="border border-dashed border-line-strong bg-bg-1 p-6">
-        <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-dim">
-          No active milestone
-        </div>
-        <p className="mt-2 text-sm leading-[1.55] text-fg-dim">
-          Publish a finance plan first. Photo guidance is keyed to the
-          project&apos;s current milestone.
-        </p>
-      </div>
-    );
+  if (draw.isLoading) return null;
+
+  if (!draw.data) {
+    return <AwaitingDrawState projectId={projectId} />;
+  }
+
+  // drawId is present, but the hook returned null → 404/409 from the API.
+  // Treat the same way as "no approved draw" — the panel has nothing to
+  // render yet. This primarily covers stale cache scenarios.
+  if (!guidance.isLoading && guidance.data === null) {
+    return <AwaitingDrawState projectId={projectId} />;
   }
 
   const shots = guidance.data?.shotList ?? [];
@@ -57,17 +59,15 @@ export function PhotoGuidance({ projectId }: { projectId: string }) {
 
   return (
     <div className="space-y-5">
-      <DeviceBanner milestoneName={currentMilestone.data.name} />
+      <DeviceBanner draw={draw.data} />
 
       <div className="border border-line bg-bg-1">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-line-strong px-5 py-4">
           <div>
             <Eyebrow>Shot list · {shots.length}</Eyebrow>
             <div className="mt-1 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-dim">
-              Milestone {currentMilestone.data.sequence
-                .toString()
-                .padStart(2, "0")}{" "}
-              · {currentMilestone.data.name}
+              Draw #{String(draw.data.drawNumber).padStart(2, "0")} ·{" "}
+              {draw.data.contractor.companyName}
             </div>
           </div>
           <button
@@ -106,7 +106,7 @@ export function PhotoGuidance({ projectId }: { projectId: string }) {
           </div>
         ) : shots.length === 0 ? (
           <div className="p-6 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-dim">
-            NO SHOTS REQUIRED · BACK WITH THE NEXT MILESTONE
+            NO SHOTS REQUIRED · NO CLAIMED LINES MATCH UPLOADED PLANS
           </div>
         ) : (
           <ol className="divide-y divide-line">
@@ -120,7 +120,45 @@ export function PhotoGuidance({ projectId }: { projectId: string }) {
   );
 }
 
-function DeviceBanner({ milestoneName }: { milestoneName: string }) {
+function AwaitingDrawState({ projectId }: { projectId: string }) {
+  const contractorUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/contractor/draw-request/${projectId}`
+      : `/contractor/draw-request/${projectId}`;
+
+  return (
+    <div className="border border-dashed border-line-strong bg-bg-1 p-6">
+      <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-dim">
+        Awaiting contractor draw approval
+      </div>
+      <p className="mt-2 text-sm leading-[1.55] text-fg-dim">
+        Photo guidance is keyed to the approved G703 draw. Send your
+        contractor the link below — once they upload a G703 and approve
+        every line, Agent 4 builds a shot list here automatically.
+      </p>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <code className="truncate border border-line bg-bg px-3 py-2 font-mono text-[11px] text-fg-dim">
+          {contractorUrl}
+        </code>
+        <button
+          type="button"
+          onClick={() => navigator.clipboard?.writeText(contractorUrl)}
+          className="inline-flex items-center gap-2 border border-line-strong px-3.5 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-fg transition-colors hover:border-fg-dim hover:bg-bg-2"
+        >
+          Copy contractor link
+        </button>
+        <Link
+          to="/contractor"
+          className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim transition-colors hover:text-fg"
+        >
+          Open contractor portal →
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function DeviceBanner({ draw }: { draw: Draw }) {
   return (
     <div className="relative overflow-hidden border border-line-strong bg-bg-1 px-6 py-5">
       <div
@@ -131,15 +169,23 @@ function DeviceBanner({ milestoneName }: { milestoneName: string }) {
         <div className="max-w-xl">
           <div className="inline-flex items-center gap-2 font-mono text-[11px] uppercase tracking-[0.16em] text-accent">
             <span aria-hidden className="inline-block h-1.5 w-1.5 bg-accent" />
-            Recommended device
+            Capture devices
           </div>
           <div className="mt-2 text-[18px] font-bold tracking-[-0.01em] text-fg">
-            iPhone camera · native app · HEIC on
+            Phone native camera · in-browser capture · drone / IoT (preview)
           </div>
           <p className="mt-2 text-[13px] leading-[1.55] text-fg-dim">
-            Default camera preserves timestamp + GPS EXIF end-to-end. Don&apos;t
-            route through screenshots, Airdrop-compressed copies, or chat apps
-            — those strip metadata and Plumbline will mark the capture{" "}
+            Phone-native shots preserve EXIF and land as{" "}
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-success">
+              EXIF ✓
+            </span>
+            . In-browser captures (webcam) carry a client-sent timestamp +
+            GPS sidecar and land as{" "}
+            <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-warn">
+              CLIENT-HINTED
+            </span>{" "}
+            — indexed, but weaker chain of custody. Screenshots and
+            chat-compressed copies still land as{" "}
             <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-warn">
               NO EXIF
             </span>
@@ -147,7 +193,8 @@ function DeviceBanner({ milestoneName }: { milestoneName: string }) {
           </p>
         </div>
         <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
-          Shooting for · {milestoneName}
+          Shooting for · DRAW #{String(draw.drawNumber).padStart(2, "0")} ·{" "}
+          {draw.contractor.companyName}
         </div>
       </div>
     </div>
@@ -198,6 +245,24 @@ function ShotRow({ shot, index }: { shot: PhotoGuidanceShot; index: number }) {
                   className="border border-line-strong bg-bg px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim"
                 >
                   {id}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {shot.referenceLineNumbers.length > 0 && (
+          <div className="mt-3">
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
+              Claimed lines this shot verifies
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {shot.referenceLineNumbers.map((ln) => (
+                <span
+                  key={ln}
+                  className="border border-line-strong bg-bg px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim"
+                >
+                  {ln}
                 </span>
               ))}
             </div>

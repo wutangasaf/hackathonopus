@@ -24,6 +24,7 @@ import { useGanttStore } from "@/stores/ganttStore";
 import { ActionBar } from "@/routes/gantt/ActionBar";
 import { sheetKey, type ChipData } from "@/routes/gantt/DocChip";
 import { Palette } from "@/routes/gantt/Palette";
+import { PlanHeader } from "@/routes/gantt/PlanHeader";
 import { SidePanel } from "@/routes/gantt/SidePanel";
 import { Timeline } from "@/routes/gantt/Timeline";
 
@@ -40,6 +41,10 @@ export default function GanttBuilder() {
   const seedScaffold = useGanttStore((s) => s.seedScaffold);
   const seeded = useGanttStore((s) => s.seeded);
   const addDocRef = useGanttStore((s) => s.addDocRef);
+  const reorderMilestones = useGanttStore((s) => s.reorderMilestones);
+  const milestones = useGanttStore((s) => s.milestones);
+  const loanAmount = useGanttStore((s) => s.loanAmount);
+  const validate = useGanttStore((s) => s.validate);
 
   // One-shot hydration: plan wins if present; otherwise seed an 8-row scaffold.
   const hydrated = useRef(false);
@@ -66,25 +71,60 @@ export default function GanttBuilder() {
   );
 
   function onDragEnd(e: DragEndEvent) {
+    const activeId = e.active.id;
     const overId = e.over?.id;
-    if (typeof overId !== "string") return;
-    if (!overId.startsWith("milestone:")) return;
-    const data = e.active.data.current as ChipData | undefined;
-    if (!data || data.kind !== "planSheet") return;
-    const localId = overId.slice("milestone:".length);
-    addDocRef(localId, {
-      documentId: data.documentId,
-      sheetLabels: data.sheetLabel ? [data.sheetLabel] : undefined,
-      notes: sheetKey({
+    if (typeof activeId !== "string" || typeof overId !== "string") return;
+    const data = e.active.data.current as
+      | ChipData
+      | { kind: "milestone"; localId: string }
+      | undefined;
+
+    // Row reorder: active is a milestone row dragged via its handle.
+    if (data?.kind === "milestone") {
+      if (activeId === overId) return;
+      const toLocal = overId.startsWith("sortable:")
+        ? overId.slice("sortable:".length)
+        : null;
+      if (!toLocal) return;
+      const from = milestones.findIndex((m) => m.localId === data.localId);
+      const to = milestones.findIndex((m) => m.localId === toLocal);
+      if (from >= 0 && to >= 0) reorderMilestones(from, to);
+      return;
+    }
+
+    // Doc chip → milestone drop. The sortable row is also the droppable
+    // target, so `over.id` is `sortable:<localId>`.
+    if (data?.kind === "planSheet") {
+      const localId = overId.startsWith("sortable:")
+        ? overId.slice("sortable:".length)
+        : overId.startsWith("milestone:")
+        ? overId.slice("milestone:".length)
+        : null;
+      if (!localId) return;
+      addDocRef(localId, {
         documentId: data.documentId,
-        pageNumber: data.pageNumber,
-      }),
-    });
+        sheetLabels: data.sheetLabel ? [data.sheetLabel] : undefined,
+        notes: sheetKey({
+          documentId: data.documentId,
+          pageNumber: data.pageNumber,
+        }),
+      });
+    }
   }
 
   const knownPlanDocIds = useMemo(
     () => (plans.data ?? []).map((d) => d._id),
     [plans.data],
+  );
+
+  // Recompute on every relevant store change so the ActionBar + inline
+  // markers always reflect the current draft state.
+  const validation = useMemo(
+    // validate closes over the store via get(); bust the memo whenever
+    // milestones, loanAmount, or known plan docs change.
+    () => validate(knownPlanDocIds),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [milestones, loanAmount, knownPlanDocIds, validate],
   );
 
   const sheets: ClassifiedSheet[] = classification.data?.sheets ?? [];
@@ -114,7 +154,7 @@ export default function GanttBuilder() {
               <span className="text-accent">tranches</span>.
             </>
           }
-          lead="Each milestone is a tranche: a dated slice of the loan that releases when the bank verifies its required completions. Drag labeled plan pages from the left onto the milestone they govern. Edit dates and amounts in the right panel."
+          lead="Starter 8-phase residential template. Rename phases, adjust percentages, or add/remove milestones to match this project. Drag labeled plan pages from the left onto the milestone they govern."
         />
 
         {classification.isLoading || plans.isLoading ? (
@@ -133,6 +173,8 @@ export default function GanttBuilder() {
           </div>
         ) : (
           <DndContext sensors={sensors} onDragEnd={onDragEnd}>
+            <PlanHeader />
+
             {/* Summary strip */}
             <div className="mb-6 flex flex-wrap items-center justify-between gap-4 border border-line bg-bg-1 px-5 py-4">
               <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-dim">
@@ -157,14 +199,17 @@ export default function GanttBuilder() {
 
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-[260px_1fr_320px]">
               <Palette sheets={sheets} />
-              <Timeline sheetLookup={sheetLookup} />
+              <Timeline
+                sheetLookup={sheetLookup}
+                fieldErrors={validation.fieldErrors}
+              />
               <SidePanel sheetLookup={sheetLookup} />
             </div>
 
             <ActionBar
               projectId={projectId}
               planExists={Boolean(financePlan.data)}
-              knownPlanDocIds={knownPlanDocIds}
+              validation={validation}
             />
           </DndContext>
         )}

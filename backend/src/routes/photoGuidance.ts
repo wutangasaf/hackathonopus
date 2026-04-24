@@ -1,55 +1,57 @@
 import type { FastifyPluginAsync } from "fastify";
+import { isValidObjectId } from "mongoose";
 import { PhotoGuidance } from "../models/photoGuidance.js";
-import { FinancePlan, type FinancePlanDoc } from "../models/financePlan.js";
+import { Draw } from "../models/draw.js";
 import { parseObjectId } from "./util.js";
 import { runPhotoGuidance } from "../agents/photoGuidance.js";
-import { isValidObjectId } from "mongoose";
 
 const photoGuidanceRoutes: FastifyPluginAsync = async (app) => {
   app.get<{
     Params: { id: string };
-    Querystring: { milestoneId?: string; regenerate?: string };
+    Querystring: { drawId?: string; regenerate?: string };
   }>("/:id/photo-guidance", async (req, reply) => {
     const projectId = parseObjectId(req.params.id, reply);
     if (!projectId) return;
 
-    let milestoneId = req.query.milestoneId;
-    if (milestoneId && !isValidObjectId(milestoneId)) {
-      return reply.code(400).send({ error: "invalid milestoneId" });
+    let drawId = req.query.drawId;
+    if (drawId && !isValidObjectId(drawId)) {
+      return reply.code(400).send({ error: "invalid drawId" });
     }
 
-    if (!milestoneId) {
-      const plan = (await FinancePlan.findOne({ projectId }).sort({
-        uploadedAt: -1,
-      })) as FinancePlanDoc | null;
-      if (!plan) {
-        return reply
-          .code(404)
-          .send({ error: "no finance plan parsed — upload one first" });
+    if (!drawId) {
+      const latestApproved = await Draw.findOne({
+        projectId,
+        status: "approved",
+      }).sort({ approvedAt: -1, drawNumber: -1 });
+      if (!latestApproved) {
+        return reply.code(404).send({
+          error:
+            "no approved draw on this project — contractor must approve a G703 draw request first",
+        });
       }
-      const current = plan.milestones
-        .slice()
-        .sort((a, b) => a.sequence - b.sequence)
-        .find((m) => m.status !== "verified" && m.status !== "rejected");
-      if (!current) {
-        return reply
-          .code(404)
-          .send({ error: "no active milestone on this project" });
+      drawId = String(latestApproved._id);
+    } else {
+      const draw = await Draw.findOne({ _id: drawId, projectId });
+      if (!draw) return reply.code(404).send({ error: "draw not found" });
+      if (draw.status !== "approved") {
+        return reply.code(409).send({
+          error: `draw is not approved (status=${draw.status})`,
+        });
       }
-      milestoneId = String(current._id);
     }
 
-    const regenerate = req.query.regenerate === "1" || req.query.regenerate === "true";
+    const regenerate =
+      req.query.regenerate === "1" || req.query.regenerate === "true";
     if (!regenerate) {
       const cached = await PhotoGuidance.findOne({
         projectId,
-        milestoneId,
+        drawId,
       }).sort({ generatedAt: -1 });
       if (cached) return cached;
     }
 
     try {
-      await runPhotoGuidance(projectId, milestoneId);
+      await runPhotoGuidance(projectId, drawId);
     } catch (err) {
       return reply.code(500).send({
         error: "photo guidance generation failed",
@@ -58,7 +60,7 @@ const photoGuidanceRoutes: FastifyPluginAsync = async (app) => {
     }
     const fresh = await PhotoGuidance.findOne({
       projectId,
-      milestoneId,
+      drawId,
     }).sort({ generatedAt: -1 });
     if (!fresh) {
       return reply.code(500).send({ error: "agent ran but no row persisted" });

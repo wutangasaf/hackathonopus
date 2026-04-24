@@ -11,6 +11,7 @@ const shotSchema = new Schema(
     lighting: { type: String, required: true },
     safety: { type: String },
     referenceElementIds: [{ type: String }],
+    referenceLineNumbers: [{ type: String }],
   },
   { _id: false },
 );
@@ -23,7 +24,11 @@ const photoGuidanceSchema = new Schema(
       required: true,
       index: true,
     },
-    milestoneId: { type: Schema.Types.ObjectId, required: true },
+    drawId: {
+      type: Schema.Types.ObjectId,
+      ref: "Draw",
+      required: true,
+    },
     shotList: { type: [shotSchema], default: [] },
     generatedAt: { type: Date, default: () => new Date(), required: true },
     modelVersion: { type: String, required: true },
@@ -31,7 +36,7 @@ const photoGuidanceSchema = new Schema(
   { timestamps: true },
 );
 
-photoGuidanceSchema.index({ projectId: 1, milestoneId: 1 });
+photoGuidanceSchema.index({ projectId: 1, drawId: 1 });
 
 export type PhotoGuidanceDoc = InferSchemaType<typeof photoGuidanceSchema> & {
   _id: Types.ObjectId;

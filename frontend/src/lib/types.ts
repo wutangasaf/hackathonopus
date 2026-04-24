@@ -113,6 +113,22 @@ export const DRAW_VERDICTS = [
 ] as const;
 export type DrawVerdictValue = (typeof DRAW_VERDICTS)[number];
 
+export const DRAW_STATUSES = [
+  "parsing",
+  "ready_for_review",
+  "approved",
+  "rejected",
+  "failed",
+] as const;
+export type DrawStatus = (typeof DRAW_STATUSES)[number];
+
+export const DRAW_LINE_APPROVAL_STATUSES = [
+  "pending",
+  "confirmed",
+  "overridden",
+] as const;
+export type DrawLineApprovalStatus = (typeof DRAW_LINE_APPROVAL_STATUSES)[number];
+
 export const AGENT_NAMES = [
   "PlanClassifier",
   "PlanFormatExtractor",
@@ -144,6 +160,13 @@ export type ExifMeta = {
   camera?: { make?: string; model?: string };
   orientation?: number;
   error?: string;
+  source?: "exif_verified" | "client_hinted";
+  captureSource?:
+    | "phone_camera"
+    | "desktop_camera"
+    | "native_upload"
+    | "drone"
+    | "iot";
 };
 
 export type DocumentRecord = {
@@ -359,12 +382,13 @@ export type PhotoGuidanceShot = {
   lighting?: string;
   safety?: string;
   referenceElementIds: string[];
+  referenceLineNumbers: string[];
 };
 
 export type PhotoGuidance = {
   _id: ObjectIdString;
   projectId: ObjectIdString;
-  milestoneId: ObjectIdString;
+  drawId: ObjectIdString;
   shotList: PhotoGuidanceShot[];
   modelVersion: string;
   generatedAt: IsoDateString;
@@ -426,6 +450,54 @@ export type DrawVerdict = {
   reasoning: string;
   conditions?: string[];
   missingRequirements?: string[];
+};
+
+// ---------- Draws (contractor-facing) ----------
+
+export type DrawLine = {
+  lineNumber: string;
+  description: string;
+  csiCode?: string;
+  scheduledValue: number;
+  pctThisPeriod: number;
+  pctCumulative: number;
+  amountThisPeriod: number;
+  aiSuggestedMilestoneId?: string;
+  aiSuggestedDiscipline?: Discipline;
+  aiConfidence?: number;
+  aiReasoning?: string;
+  confirmedMilestoneId?: string;
+  approvalStatus: DrawLineApprovalStatus;
+};
+
+export type DrawContractorSnapshot = {
+  name: string;
+  companyName: string;
+  licenseNumber?: string;
+};
+
+export type Draw = {
+  _id: ObjectIdString;
+  projectId: ObjectIdString;
+  drawNumber: number;
+  periodStart: IsoDateString;
+  periodEnd: IsoDateString;
+  contractor: DrawContractorSnapshot;
+  g703DocumentId: ObjectIdString;
+  g702DocumentId?: ObjectIdString;
+  status: DrawStatus;
+  totalAmountRequested?: number;
+  lines: DrawLine[];
+  extractorRunId?: ObjectIdString;
+  extractorError?: string;
+  approvedAt?: IsoDateString;
+  createdAt: IsoDateString;
+  updatedAt: IsoDateString;
+};
+
+export type PatchDrawLineRequest = {
+  approvalStatus: DrawLineApprovalStatus;
+  confirmedMilestoneId?: string;
 };
 
 export type GapReport = {

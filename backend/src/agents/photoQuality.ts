@@ -14,7 +14,7 @@ import {
   type PhotoGuidanceDoc,
 } from "../models/photoGuidance.js";
 import { DISCIPLINES } from "../models/planClassification.js";
-import { FinancePlan, type FinancePlanDoc } from "../models/financePlan.js";
+import { Draw, type DrawDoc } from "../models/draw.js";
 import { claudeCall, type ClaudeMessage } from "../lib/claudeCall.js";
 import { withAgentRun } from "./shared.js";
 import { config } from "../config.js";
@@ -62,22 +62,17 @@ export async function runPhotoQuality(
       modelVersion: MODEL_VERSION,
     },
     async (ctx) => {
-      const plan = (await FinancePlan.findOne({
+      const latestApprovedDraw = (await Draw.findOne({
         projectId: photoDoc.projectId,
-      }).sort({ uploadedAt: -1 })) as FinancePlanDoc | null;
+        status: "approved",
+      }).sort({ approvedAt: -1, drawNumber: -1 })) as DrawDoc | null;
 
       let guidance: PhotoGuidanceDoc | null = null;
-      if (plan) {
-        const currentMilestone = plan.milestones
-          .slice()
-          .sort((a, b) => a.sequence - b.sequence)
-          .find((m) => m.status !== "verified" && m.status !== "rejected");
-        if (currentMilestone) {
-          guidance = (await PhotoGuidance.findOne({
-            projectId: photoDoc.projectId,
-            milestoneId: currentMilestone._id,
-          })) as PhotoGuidanceDoc | null;
-        }
+      if (latestApprovedDraw) {
+        guidance = (await PhotoGuidance.findOne({
+          projectId: photoDoc.projectId,
+          drawId: latestApprovedDraw._id,
+        })) as PhotoGuidanceDoc | null;
       }
 
       const image = await loadVisionImage(

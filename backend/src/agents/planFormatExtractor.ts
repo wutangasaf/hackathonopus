@@ -32,7 +32,7 @@ const toolOutputSchema = z.object({
   elements: z.array(elementSchema),
   inspectorChecklist: z.array(z.string()),
   scaleNotes: z.string().optional(),
-  sourceSheets: z.array(z.string()),
+  sourceSheets: z.array(z.string()).optional(),
 });
 
 type ToolOutput = z.infer<typeof toolOutputSchema>;
@@ -182,7 +182,7 @@ export async function runPlanFormatExtractor(
               "Emit the discipline-specific professional-format payload (elements + inspector checklist + scale notes + source sheets).",
             inputSchema: {
               type: "object",
-              required: ["elements", "inspectorChecklist", "sourceSheets"],
+              required: ["elements", "inspectorChecklist"],
               properties: {
                 elements: {
                   type: "array",
@@ -242,7 +242,10 @@ export async function runPlanFormatExtractor(
           })),
           inspectorChecklist: data.inspectorChecklist,
           scaleNotes: data.scaleNotes,
-          sourceSheets: data.sourceSheets,
+          sourceSheets:
+            data.sourceSheets && data.sourceSheets.length > 0
+              ? data.sourceSheets
+              : pages.map((p) => p.sheetLabel),
           modelVersion: MODEL_VERSION,
           extractedAt: new Date(),
         });

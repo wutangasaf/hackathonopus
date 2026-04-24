@@ -59,11 +59,27 @@ All routes are mounted under `/api/projects`.
 
 Create/replace enforces: SOV `scheduledValue` sum equals `totalBudget`; milestone `plannedPercentOfLoan` strictly monotonic and ends at 100; `sum(trancheAmount) == loanAmount ± $1`; `planDocRefs` reference existing `PLAN` documents on this project.
 
+### Draws (monthly G702/G703 cycle)
+
+A `Draw` is one monthly payment application: the contractor uploads a G703 (required, parsed) and an optional G702 cover sheet, the `G703Extractor` agent parses line items and suggests a milestone per row, the contractor confirms or overrides each row, and the draw is approved. See [`docs/CONSTRUCTION_DRAW_PROCESS.md`](../docs/CONSTRUCTION_DRAW_PROCESS.md) for the business process.
+
+| Method | Path                                                     | Notes                                                                                       |
+|--------|----------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| POST   | `/:id/draws`                                             | Multipart: `g703` file (required, PDF), `g702` file (optional), optional `periodStart`/`periodEnd` text fields. Creates Draw (`status=parsing`), kicks off `G703Extractor`. Returns 201 immediately with the Draw row. |
+| GET    | `/:id/draws`                                             | List draws for this project, newest `drawNumber` first.                                     |
+| GET    | `/:id/draws/:drawId`                                     | Full detail including `lines[]` with AI suggestions + contractor approval state.            |
+| PATCH  | `/:id/draws/:drawId/lines/:lineIndex`                    | Body `{ approvalStatus: "pending"\|"confirmed"\|"overridden", confirmedMilestoneId? }`. `overridden` requires `confirmedMilestoneId`. |
+| POST   | `/:id/draws/:drawId/approve`                             | Finalise. 409 if any row still `pending` or status ≠ `ready_for_review`. Sets `status="approved"`, `approvedAt=now`, backfills `confirmedMilestoneId` from the AI suggestion for confirmed rows. |
+
+`Draw.status` progresses `parsing → ready_for_review → approved` (or `failed` if the extractor throws). The frontend polls `GET /:id/draws/:drawId` until `status="ready_for_review"` before rendering the review table. Each `lines[].aiConfidence` is `0–1`; surface rows `<0.85` as requiring an explicit action.
+
+The hardcoded demo contractor lives in `src/lib/defaultContractor.ts` and is snapshotted onto every new Draw. No auth.
+
 ### Photo guidance
 
 | Method | Path                                                                  | Notes                                                                                 |
 |--------|-----------------------------------------------------------------------|---------------------------------------------------------------------------------------|
-| GET    | `/:id/photo-guidance?milestoneId=…&regenerate=1`                      | Falls back to the active milestone if `milestoneId` omitted. Cached per milestone.    |
+| GET    | `/:id/photo-guidance?drawId=…&regenerate=1`                           | Agent 4. Reads the approved `Draw.lines[]` to build a shot list that verifies each claimed G703 row against uploaded PlanFormat elements. Auto-selects the latest `approved` Draw if `drawId` is omitted. 404 if no approved Draw exists; 409 if the passed `drawId` is not yet approved. Each shot carries `referenceLineNumbers: string[]` back-linking to the G703 rows. Cached per draw; pass `regenerate=1` to force.  |
 
 ### Photos
 
@@ -90,6 +106,34 @@ Create/replace enforces: SOV `scheduledValue` sum equals `totalBudget`; mileston
 | GET    | `/:id/runs`             | All `AgentRun` rows for this project, newest first.   |
 | GET    | `/:id/runs/:runId`      | One run, including usage tokens and error if failed.  |
 
+### Supervisor (Claude Managed Agents, bolt-on)
+
+The Supervisor is an autonomous Managed-Agents draw inspector that runs *after* a draw is submitted. It reads existing pipeline state (Draw + GapReport + Observation + PhotoAssessment + PlanFormat + AgentRun) via custom tools, optionally drafts a targeted re-inspection packet, and records a single finding with severity + recommendation. It **never mutates any existing collection** — it writes only to three new collections (`SupervisorSession`, `SupervisorFinding`, `ReinspectionRequest`) and never re-runs the seven pipeline agents.
+
+| Method | Path                                            | Notes                                                                                                             |
+|--------|-------------------------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| POST   | `/:id/supervisor/investigate`                   | Body `{ drawId }`. Response is `text/event-stream` — frames of `{ type: "connected" \| "event" \| "complete" \| "error" }`. Closes after the session goes idle. |
+| GET    | `/:id/supervisor/sessions`                      | List recent Supervisor sessions for this project (up to 50).                                                      |
+| GET    | `/:id/supervisor/sessions/:sessionId`           | Snapshot: `{ session, findings, reinspections }` for replay after reload.                                         |
+
+**Custom tools exposed to the agent** (handlers in `src/lib/supervisorTools.ts`):
+
+| Tool                             | Purpose                                                                                               |
+|----------------------------------|-------------------------------------------------------------------------------------------------------|
+| `read_draw_state`                | Draw header + G703 lines + latest GapReport + last 10 AgentRuns for this project.                     |
+| `read_photo_evidence`            | Photo documents + per-photo PhotoAssessment + Observations (matched elements, confidence, safety).    |
+| `read_plan_scope`                | Approved PlanFormat elements + inspector checklist, optionally filtered by discipline.                |
+| `generate_reinspection_request`  | Writes a new `ReinspectionRequest` with a targeted 3–6-shot list, narrative, and optional `dueBy`.    |
+| `record_finding`                 | Writes exactly one `SupervisorFinding` per session with severity, category, narrative, evidence, recommendation. |
+
+Built-in toolset (`agent_toolset_20260401`) is enabled with defaults — `bash`, `read`, `write`, `edit`, `glob`, `grep`, `web_fetch`, `web_search` — so the agent can also look things up or script in the managed container if its reasoning calls for it.
+
+**Bootstrap.** `src/lib/managedAgents.ts` owns `ensureSupervisorBootstrap()` — the first call ever creates the Agent + Environment via `client.beta.agents.create` / `client.beta.environments.create` and caches the IDs in the `ManagedAgentsConfig` singleton collection (keyed `plumbline_supervisor_v1`). Every subsequent call is a cache hit. The cache is invalidated automatically if the system prompt or model changes (hash-keyed).
+
+**SSE transport.** The investigate route uses `reply.hijack()` + manual `reply.raw.write("data: ...\\n\\n")` with a 15-second keep-alive and an `AbortController` wired to socket-close so that disconnecting the client stops the event loop and prevents session-orphan cost. No new dependency.
+
+**Smoke test.** `backend/scripts/smokeSupervisor.ts` verifies the full transport — bootstrap → session create → user message → stream to idle — without requiring a real project. Run with `ANTHROPIC_API_KEY=sk-... npx tsx backend/scripts/smokeSupervisor.ts`.
+
 ## Source layout
 
 ```
@@ -110,4 +154,12 @@ src/
 
 ## Data models
 
-`Project`, `Document` (PLAN | PHOTO | FINANCE_PLAN), `PlanClassification`, `PlanFormat`, `FinancePlan`, `PhotoGuidance`, `PhotoAssessment`, `Observation`, `GapReport`, `AgentRun`. Every mutation-producing agent writes a versioned row; readers always fetch the highest version.
+`Project`, `Document` (PLAN | PHOTO | FINANCE_PLAN | DRAW_G703 | DRAW_G702), `PlanClassification`, `PlanFormat`, `FinancePlan`, `PhotoGuidance`, `PhotoAssessment`, `Observation`, `GapReport`, `AgentRun`, `Draw`. Every mutation-producing agent writes a versioned row; readers always fetch the highest version.
+
+Supervisor-only collections (bolt-on, never read by the pipeline): `SupervisorSession`, `SupervisorFinding`, `ReinspectionRequest`, `ManagedAgentsConfig` (singleton cache for the Agent + Environment IDs).
+
+A `Draw` is the monthly draw request: one per `{projectId, drawNumber}`, owns embedded `lines[]` (the parsed G703 rows + AI milestone suggestion + contractor approval), references the underlying `Document` rows for the uploaded G703/G702, and links to the `AgentRun` row that produced the extraction.
+
+### Agent: G703Extractor
+
+Parses an uploaded G703 PDF and, in the same Claude call, suggests which project milestone each row belongs to. Loads the project's master `FinancePlan.sov` + `FinancePlan.milestones` and injects both into the system prompt — the agent never guesses a milestone id that isn't on the project. Output is validated against a Zod array with `aiConfidence: 0–1` on every row so the contractor UI can surface low-confidence rows for explicit override. Model: `config.anthropicModel`.

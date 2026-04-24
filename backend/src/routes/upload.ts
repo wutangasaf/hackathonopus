@@ -21,6 +21,24 @@ export type ExifMeta = {
   camera?: { make?: string; model?: string };
   orientation?: number;
   error?: string;
+  // "exif_verified" = extracted from the image bytes (native camera path).
+  // "client_hinted" = filled in from sidecar form fields supplied by a
+  // browser capture (getUserMedia / in-page photo) where the JPEG bytes
+  // carry no EXIF. Use this to grade trust in the UI.
+  source?: "exif_verified" | "client_hinted";
+  captureSource?:
+    | "phone_camera"
+    | "desktop_camera"
+    | "native_upload"
+    | "drone"
+    | "iot";
+};
+
+export type ClientPhotoHint = {
+  capturedAt?: string;
+  lat?: number;
+  lon?: number;
+  captureSource?: ExifMeta["captureSource"];
 };
 
 async function extractPhotoExif(buf: Buffer): Promise<ExifMeta> {
@@ -69,10 +87,39 @@ async function extractPhotoExif(buf: Buffer): Promise<ExifMeta> {
   }
 }
 
+function mergeHintIntoExif(base: ExifMeta, hint: ClientPhotoHint): ExifMeta {
+  // If the bytes carried real EXIF, keep it authoritative and only tag the
+  // capture source if the client told us one we don't already know. If the
+  // bytes had no EXIF, synthesize from the sidecar fields and mark it
+  // client-hinted so the UI can show a weaker trust tier.
+  if (base.present) {
+    return {
+      ...base,
+      source: "exif_verified",
+      captureSource: base.captureSource ?? hint.captureSource ?? "native_upload",
+    };
+  }
+
+  const out: ExifMeta = {
+    ...base,
+    source: "client_hinted",
+    captureSource: hint.captureSource ?? "desktop_camera",
+  };
+  if (hint.capturedAt) {
+    const d = new Date(hint.capturedAt);
+    if (!Number.isNaN(d.getTime())) out.capturedAt = d.toISOString();
+  }
+  if (typeof hint.lat === "number" && typeof hint.lon === "number") {
+    out.gps = { lat: hint.lat, lon: hint.lon };
+  }
+  return out;
+}
+
 export async function ingestMultipartFile(
   part: MultipartFile,
   kind: DocumentKind,
   projectId: string,
+  hint?: ClientPhotoHint,
 ): Promise<IngestedDocument> {
   const buf = await part.toBuffer();
   const sha = sha256OfBuffer(buf);
@@ -86,7 +133,11 @@ export async function ingestMultipartFile(
   const storagePath = path.join(config.uploadsDir, `${randomUUID()}-${safe}`);
   await writeFile(storagePath, buf);
 
-  const exifMeta = kind === "PHOTO" ? await extractPhotoExif(buf) : undefined;
+  let exifMeta: ExifMeta | undefined;
+  if (kind === "PHOTO") {
+    const extracted = await extractPhotoExif(buf);
+    exifMeta = hint ? mergeHintIntoExif(extracted, hint) : extracted;
+  }
 
   const doc = (await DocumentModel.create({
     projectId,

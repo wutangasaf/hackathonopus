@@ -5,6 +5,8 @@ export const DOCUMENT_KINDS = [
   "FINANCE_PLAN",
   "SCHEDULE",
   "PHOTO",
+  "DRAW_G703",
+  "DRAW_G702",
 ] as const;
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 

@@ -49,12 +49,23 @@ export const queryKeys = {
       [...queryKeys.photos.all(projectId), "list"] as const,
     detail: (projectId: string, photoId: string) =>
       [...queryKeys.photos.all(projectId), "detail", photoId] as const,
-    guidance: (projectId: string, milestoneId?: string) =>
+    guidance: (projectId: string, drawId?: string) =>
       [
         ...queryKeys.photos.all(projectId),
         "guidance",
-        milestoneId ?? "current",
+        drawId ?? "latest-approved",
       ] as const,
+  },
+
+  draws: {
+    all: (projectId: string) =>
+      [...queryKeys.projects.detail(projectId), "draws"] as const,
+    list: (projectId: string) =>
+      [...queryKeys.draws.all(projectId), "list"] as const,
+    detail: (projectId: string, drawId: string) =>
+      [...queryKeys.draws.all(projectId), "detail", drawId] as const,
+    latestApproved: (projectId: string) =>
+      [...queryKeys.draws.all(projectId), "latest-approved"] as const,
   },
 
   reports: {
@@ -73,5 +84,14 @@ export const queryKeys = {
       [...queryKeys.runs.all(projectId), "list"] as const,
     detail: (projectId: string, runId: string) =>
       [...queryKeys.runs.all(projectId), "detail", runId] as const,
+  },
+
+  supervisor: {
+    all: (projectId: string) =>
+      [...queryKeys.projects.detail(projectId), "supervisor"] as const,
+    list: (projectId: string) =>
+      [...queryKeys.supervisor.all(projectId), "list"] as const,
+    session: (projectId: string, sessionId: string) =>
+      [...queryKeys.supervisor.all(projectId), "session", sessionId] as const,
   },
 } as const;

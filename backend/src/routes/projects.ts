@@ -2,6 +2,7 @@ import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 import { Project } from "../models/project.js";
 import { parseObjectId } from "./util.js";
+import { ensureEnglishFields } from "../lib/englishOnly.js";
 
 const createBody = z.object({
   name: z.string().min(1),
@@ -14,7 +15,11 @@ const projectsRoutes: FastifyPluginAsync = async (app) => {
     if (!parsed.success) {
       return reply.code(400).send({ error: parsed.error.flatten() });
     }
-    const project = await Project.create(parsed.data);
+    const translated = await ensureEnglishFields({
+      name: parsed.data.name,
+      address: parsed.data.address,
+    });
+    const project = await Project.create(translated);
     return reply.code(201).send(project);
   });
 

@@ -7,6 +7,7 @@ import { Chip } from "@/components/blocks/Chip";
 import { Eyebrow } from "@/components/blocks/Eyebrow";
 import { Container } from "@/components/layout/Container";
 import { Nav } from "@/components/layout/Nav";
+import { ProjectFlowStepper } from "@/components/ProjectFlowStepper";
 import { PhotoGuidance } from "@/components/uploads/PhotoGuidance";
 import { PhotosDropzone } from "@/components/uploads/PhotosDropzone";
 import { PipelineProgress } from "@/components/uploads/PipelineProgress";
@@ -81,6 +82,12 @@ export default function ProjectDetail() {
           isError={projectQuery.isError}
           errorText={projectQuery.error?.message}
         />
+
+        {id && (
+          <div className="mt-8">
+            <ProjectFlowStepper projectId={id} />
+          </div>
+        )}
 
         {id && (
           <div className="mt-8">
@@ -262,30 +269,38 @@ function ProjectHeader({
     );
   }
   return (
-    <div>
-      <div className="flex items-center gap-3">
-        <Eyebrow>Project</Eyebrow>
-        <ProjectStatusChip status={project.status} />
-      </div>
-      <h1 className="mt-4 font-extrabold leading-none tracking-tight2 text-fg text-[clamp(32px,4vw,64px)]">
-        {project.name}
-      </h1>
-      <div className="mt-4 flex flex-wrap gap-x-10 gap-y-2 font-mono text-[11px] tracking-mono text-fg-dim">
-        <span>
-          Address{" "}
-          <b className="ml-1 font-medium text-fg">
-            {project.address ?? "—"}
-          </b>
-        </span>
-        <span>
-          Created{" "}
-          <b className="ml-1 font-medium text-fg">
-            {relativeTime(project.createdAt)}
-          </b>
-        </span>
-        <span>
-          ID <b className="ml-1 font-medium text-fg">{project._id.slice(-8)}</b>
-        </span>
+    <div className="flex flex-wrap items-start justify-between gap-6">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-3">
+          <Eyebrow>Project</Eyebrow>
+          <ProjectStatusChip status={project.status} />
+          <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
+            · Viewing as · Bank / CRMC
+          </span>
+        </div>
+        <h1 className="mt-4 font-extrabold leading-none tracking-tight2 text-fg text-[clamp(32px,4vw,64px)]">
+          {project.name}
+        </h1>
+        <div className="mt-4 flex flex-wrap gap-x-10 gap-y-2 font-mono text-[11px] tracking-mono text-fg-dim">
+          <span>
+            Address{" "}
+            <b className="ml-1 font-medium text-fg">
+              {project.address ?? "—"}
+            </b>
+          </span>
+          <span>
+            Created{" "}
+            <b className="ml-1 font-medium text-fg">
+              {relativeTime(project.createdAt)}
+            </b>
+          </span>
+          <span>
+            ID{" "}
+            <b className="ml-1 font-medium text-fg">
+              {project._id.slice(-8)}
+            </b>
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -678,7 +693,15 @@ function PhotosTab({ projectId }: { projectId: string }) {
       </section>
 
       <section>
-        <SectionLabel>02 · Upload jobsite photos</SectionLabel>
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <SectionLabel>02 · Upload jobsite photos</SectionLabel>
+          <Link
+            to={`/inspector/${projectId}`}
+            className="inline-flex items-center gap-2 border border-line-strong px-3.5 py-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-fg transition-colors hover:border-accent hover:bg-accent hover:text-black"
+          >
+            Open inspector capture ↗
+          </Link>
+        </div>
         <PhotosDropzone projectId={projectId} />
       </section>
 
@@ -760,9 +783,12 @@ function PhotoTile({
   onDelete: () => void;
   isDeleting: boolean;
 }) {
-  const hasGeo = Boolean(doc.exifMeta?.present && doc.exifMeta.gps);
-  const exifRecorded = doc.exifMeta?.present === true;
-  const exifMissing = doc.exifMeta?.present === false;
+  const hasGeo = Boolean(doc.exifMeta?.gps);
+  const exifVerified = doc.exifMeta?.source === "exif_verified";
+  const clientHinted = doc.exifMeta?.source === "client_hinted";
+  const exifRecorded = doc.exifMeta?.present === true && !clientHinted;
+  const exifMissing =
+    doc.exifMeta?.present === false && !clientHinted;
 
   return (
     <div
@@ -789,7 +815,17 @@ function PhotoTile({
       </Link>
 
       <div className="pointer-events-none absolute left-3 top-3 flex gap-1">
-        {hasGeo && (
+        {exifVerified && (
+          <span className="border border-success/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
+            Exif ✓
+          </span>
+        )}
+        {clientHinted && (
+          <span className="border border-warn/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-warn">
+            Client-hinted
+          </span>
+        )}
+        {hasGeo && !exifVerified && !clientHinted && (
           <span className="border border-success/40 bg-[rgba(0,0,0,0.55)] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-success">
             Geo ✓
           </span>

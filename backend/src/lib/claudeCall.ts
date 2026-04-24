@@ -34,6 +34,8 @@ export type ClaudeCallResult<T> = {
   raw: Anthropic.Message;
 };
 
+const ENGLISH_ONLY_DIRECTIVE = `All output you emit MUST be in English. If any source material (PDF text, image captions, user-provided fields, form labels, etc.) is in a non-English language such as Hebrew, translate it into natural English before placing it into any tool-call field. Do not echo non-English characters in your output under any circumstances.`;
+
 let client: Anthropic | null = null;
 function getClient(): Anthropic {
   if (!client) {
@@ -66,6 +68,8 @@ export async function claudeCall<T>(
   const anthropic = getClient();
   const messages: ClaudeMessage[] = [...params.messages];
 
+  const systemText = `${ENGLISH_ONLY_DIRECTIVE}\n\n${params.system}`;
+
   let lastError: Error | undefined;
   let totalUsage: UsageMeta = {
     inputTokens: 0,
@@ -82,7 +86,7 @@ export async function claudeCall<T>(
       system: [
         {
           type: "text",
-          text: params.system,
+          text: systemText,
           cache_control: { type: "ephemeral" },
         },
       ],

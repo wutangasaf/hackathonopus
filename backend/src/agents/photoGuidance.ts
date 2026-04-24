@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { Types } from "mongoose";
 import { FinancePlan, type FinancePlanDoc } from "../models/financePlan.js";
+import { Draw, type DrawDoc } from "../models/draw.js";
 import {
   PlanFormat,
   type PlanFormatDoc,
@@ -12,7 +13,7 @@ import { withAgentRun } from "./shared.js";
 import { config } from "../config.js";
 
 const AGENT_NAME = "PhotoGuidance";
-const MODEL_VERSION = "photo-guidance/v1";
+const MODEL_VERSION = "photo-guidance/v2";
 
 const shotSchema = z.object({
   shotId: z.string().min(1),
@@ -23,6 +24,7 @@ const shotSchema = z.object({
   lighting: z.string().min(1),
   safety: z.string().optional(),
   referenceElementIds: z.array(z.string()).optional(),
+  referenceLineNumbers: z.array(z.string()).optional(),
 });
 
 const toolOutputSchema = z.object({
@@ -31,23 +33,26 @@ const toolOutputSchema = z.object({
 
 type ToolOutput = z.infer<typeof toolOutputSchema>;
 
-const SYSTEM_PROMPT = `You are a senior construction inspection coordinator producing a photo shot list for a field inspector with a mobile phone. Given the active draw milestone's completion requirements and the approved plan elements for each required discipline, emit a structured shot list the inspector can execute on a single site walk.
+const SYSTEM_PROMPT = `You are a senior construction inspection coordinator producing a photo shot list for a field inspector with a mobile phone. The contractor has submitted a G703 draw request claiming specific percent-complete values against specific SOV line items this period. Your shot list must let the inspector verify those claims in one site walk.
 
 For each shot:
 - shotId: stable slug you choose (e.g. "plumb-lav-01", "struct-footing-ne-corner"). Unique within the list.
 - discipline: one of ${DISCIPLINES.join(", ")}. Must match the element(s) being verified.
-- target: specific, concrete subject ("north-east footing at grid A-1", "lavatory rough-in at vanity lav-01"). Reference the element identifier when helpful.
+- target: specific, concrete subject that verifies a claimed line ("north-east footing at grid A-1 for line 03-110", "lavatory rough-in at vanity lav-01 for line 22-420"). Reference the element identifier and the SOV line number when helpful.
 - framing: "wide" / "medium" / "close" / "macro" — pick based on what the inspector must see.
 - angle: "perpendicular" / "45° down" / "overhead" / "elevation" — what will make features readable.
 - lighting: "daylight preferred" / "flash OK" / "avoid backlight" / "high-contrast scene" — actionable, not vague.
 - safety: optional, only when the shot requires specific PPE or caution ("from outside enclosure — do not enter live-wired panel").
-- referenceElementIds: the elementId values from the provided PlanFormat elements that this shot is meant to verify.
+- referenceElementIds: elementId values from the provided PlanFormat elements that this shot verifies.
+- referenceLineNumbers: the SOV/G703 line numbers this shot verifies. REQUIRED — every shot must cite at least one claimed line.
 
 Rules:
-- Produce one shot per element in requiredCompletion that is ≥ minPct complete-worthy to inspect. If multiple elements can be captured in one frame (same wall, same enclosure), combine them in referenceElementIds.
-- 5–20 shots total. Order them by site-walk sequence (outside → in, bottom → up), not by discipline.
+- One shot per claimed line where the line's discipline has a matching PlanFormat. If multiple claimed lines can be captured in one frame (same wall, same enclosure), combine them in referenceLineNumbers.
+- Ignore claimed lines whose discipline has no PlanFormat available — you cannot ground them in plan elements.
+- 5–20 shots total. Order by site-walk sequence (outside → in, bottom → up), not by discipline.
 - Never invent an element that isn't in the PlanFormat input.
-- Do not include general "site safety walk" shots — only shots that verify plan elements relevant to this milestone.
+- Do not emit shots for lines with pctThisPeriod=0.
+- Do not include generic "site safety walk" shots.
 
 You MUST call the generate_shot_list tool exactly once.`;
 
@@ -56,36 +61,52 @@ type PlanFormatLite = {
   elements: { elementId: string; kind: string; identifier: string; location?: string }[];
 };
 
+type ClaimedLine = {
+  lineNumber: string;
+  description: string;
+  csiCode?: string;
+  pctThisPeriod: number;
+  pctCumulative: number;
+  amountThisPeriod: number;
+  confirmedMilestoneId: string;
+  discipline?: Discipline;
+};
+
+type MilestoneLite = {
+  milestoneId: string;
+  sequence: number;
+  name: string;
+  plannedPercentOfLoan: number;
+};
+
 function buildUserContent(
-  milestone: FinancePlanDoc["milestones"][number],
+  draw: DrawDoc,
+  claimedLines: ClaimedLine[],
+  milestones: MilestoneLite[],
   planFormats: PlanFormatLite[],
 ): string {
   const lines: string[] = [];
   lines.push(
-    `## Active milestone\nsequence=${milestone.sequence} name="${milestone.name}" plannedPercentOfLoan=${milestone.plannedPercentOfLoan}`,
+    `## Active draw request\ndrawNumber=${draw.drawNumber} periodStart=${draw.periodStart.toISOString().slice(0, 10)} periodEnd=${draw.periodEnd.toISOString().slice(0, 10)} contractor="${draw.contractor.companyName}"`,
   );
-  lines.push(`## Required completion targets for this milestone`);
-  for (const rc of milestone.requiredCompletion) {
+
+  lines.push(`## Claimed lines this period (what the inspector must verify)`);
+  for (const l of claimedLines) {
+    const csi = l.csiCode ? ` csi=${l.csiCode}` : "";
+    const disc = l.discipline ? ` discipline=${l.discipline}` : "";
     lines.push(
-      `- discipline=${rc.discipline} elementKindOrId="${rc.elementKindOrId}" minPct=${rc.minPct}`,
+      `- lineNumber=${l.lineNumber}${csi}${disc} pctThisPeriod=${l.pctThisPeriod} pctCumulative=${l.pctCumulative} amountThisPeriod=${l.amountThisPeriod} milestoneId=${l.confirmedMilestoneId} description="${l.description}"`,
     );
   }
-  if (milestone.requiredDocs.length > 0) {
-    lines.push(`## Required docs at draw time (for context only, not shot targets):`);
-    for (const d of milestone.requiredDocs) lines.push(`- ${d}`);
+
+  lines.push(`## Milestones touched by this draw`);
+  for (const m of milestones) {
+    lines.push(
+      `- milestoneId=${m.milestoneId} sequence=${m.sequence} name="${m.name}" plannedPercentOfLoan=${m.plannedPercentOfLoan}`,
+    );
   }
-  if (milestone.planDocRefs && milestone.planDocRefs.length > 0) {
-    lines.push(`## Plan documents this tranche is drawing against (cite sheet labels in shot targets when helpful):`);
-    for (const ref of milestone.planDocRefs) {
-      const sheets =
-        ref.sheetLabels && ref.sheetLabels.length > 0
-          ? ` sheets=[${ref.sheetLabels.join(",")}]`
-          : "";
-      const note = ref.notes ? ` note="${ref.notes}"` : "";
-      lines.push(`- documentId=${String(ref.documentId)}${sheets}${note}`);
-    }
-  }
-  lines.push(`## PlanFormat elements by discipline`);
+
+  lines.push(`## PlanFormat elements by discipline (use these to ground shot targets)`);
   for (const pf of planFormats) {
     lines.push(`### ${pf.discipline} (${pf.elements.length} elements)`);
     for (const el of pf.elements) {
@@ -100,33 +121,75 @@ function buildUserContent(
 
 export async function runPhotoGuidance(
   projectId: Types.ObjectId | string,
-  milestoneId: Types.ObjectId | string,
+  drawId: Types.ObjectId | string,
 ) {
   return withAgentRun(
     {
       projectId,
       agentName: AGENT_NAME,
-      input: { milestoneId: String(milestoneId) },
+      input: { drawId: String(drawId) },
       modelVersion: MODEL_VERSION,
     },
     async (ctx) => {
+      const draw = (await Draw.findOne({
+        _id: drawId,
+        projectId,
+      })) as DrawDoc | null;
+      if (!draw) throw new Error(`draw ${drawId} not found for project`);
+      if (draw.status !== "approved") {
+        throw new Error(
+          `draw ${drawId} not approved yet (status=${draw.status}) — contractor must approve before guidance`,
+        );
+      }
+
+      const reviewedLines = draw.lines.filter(
+        (l) =>
+          l.approvalStatus !== "pending" &&
+          !!l.confirmedMilestoneId &&
+          l.pctThisPeriod > 0,
+      );
+
+      if (reviewedLines.length === 0) {
+        await PhotoGuidance.deleteMany({ projectId, drawId });
+        const row = await PhotoGuidance.create({
+          projectId,
+          drawId,
+          shotList: [],
+          generatedAt: new Date(),
+          modelVersion: MODEL_VERSION,
+        });
+        return { photoGuidanceId: row._id, shotCount: 0 };
+      }
+
       const plan = (await FinancePlan.findOne({ projectId }).sort({
         uploadedAt: -1,
       })) as FinancePlanDoc | null;
       if (!plan) throw new Error("no finance plan for project");
 
-      const milestone = plan.milestones.find(
-        (m) => String(m._id) === String(milestoneId),
+      const touchedMilestoneIds = new Set(
+        reviewedLines.map((l) => String(l.confirmedMilestoneId)),
       );
-      if (!milestone) {
-        throw new Error(`milestone ${milestoneId} not on latest finance plan`);
-      }
+      const touchedMilestones = plan.milestones.filter((m) =>
+        touchedMilestoneIds.has(String(m._id)),
+      );
 
-      const neededDisciplines = new Set<Discipline>(
-        milestone.requiredCompletion.map((rc) => rc.discipline as Discipline),
-      );
-      if (neededDisciplines.size === 0) {
-        throw new Error("milestone has no requiredCompletion entries");
+      const milestonesLite: MilestoneLite[] = touchedMilestones.map((m) => ({
+        milestoneId: String(m._id),
+        sequence: m.sequence,
+        name: m.name,
+        plannedPercentOfLoan: m.plannedPercentOfLoan,
+      }));
+
+      const neededDisciplines = new Set<Discipline>();
+      for (const m of touchedMilestones) {
+        for (const rc of m.requiredCompletion) {
+          neededDisciplines.add(rc.discipline as Discipline);
+        }
+      }
+      for (const l of reviewedLines) {
+        if (l.aiSuggestedDiscipline) {
+          neededDisciplines.add(l.aiSuggestedDiscipline as Discipline);
+        }
       }
 
       const planFormats: PlanFormatLite[] = [];
@@ -144,13 +207,43 @@ export async function runPhotoGuidance(
           })),
         });
       }
+
       if (planFormats.length === 0) {
-        throw new Error(
-          `no PlanFormat for disciplines required by milestone (${Array.from(neededDisciplines).join(", ")})`,
-        );
+        await PhotoGuidance.deleteMany({ projectId, drawId });
+        const row = await PhotoGuidance.create({
+          projectId,
+          drawId,
+          shotList: [],
+          generatedAt: new Date(),
+          modelVersion: MODEL_VERSION,
+        });
+        return { photoGuidanceId: row._id, shotCount: 0 };
       }
 
-      const userText = buildUserContent(milestone, planFormats);
+      const availableDisciplines = new Set<Discipline>(
+        planFormats.map((pf) => pf.discipline),
+      );
+      const claimedLines: ClaimedLine[] = reviewedLines.map((l) => ({
+        lineNumber: l.lineNumber,
+        description: l.description,
+        csiCode: l.csiCode ?? undefined,
+        pctThisPeriod: l.pctThisPeriod,
+        pctCumulative: l.pctCumulative,
+        amountThisPeriod: l.amountThisPeriod,
+        confirmedMilestoneId: String(l.confirmedMilestoneId),
+        discipline:
+          l.aiSuggestedDiscipline &&
+          availableDisciplines.has(l.aiSuggestedDiscipline as Discipline)
+            ? (l.aiSuggestedDiscipline as Discipline)
+            : undefined,
+      }));
+
+      const userText = buildUserContent(
+        draw,
+        claimedLines,
+        milestonesLite,
+        planFormats,
+      );
       const messages: ClaudeMessage[] = [
         { role: "user", content: [{ type: "text", text: userText }] },
       ];
@@ -176,6 +269,7 @@ export async function runPhotoGuidance(
                     "framing",
                     "angle",
                     "lighting",
+                    "referenceLineNumbers",
                   ],
                   properties: {
                     shotId: { type: "string" },
@@ -186,6 +280,10 @@ export async function runPhotoGuidance(
                     lighting: { type: "string" },
                     safety: { type: "string" },
                     referenceElementIds: {
+                      type: "array",
+                      items: { type: "string" },
+                    },
+                    referenceLineNumbers: {
                       type: "array",
                       items: { type: "string" },
                     },
@@ -201,13 +299,14 @@ export async function runPhotoGuidance(
       });
       ctx.recordUsage(usage);
 
-      await PhotoGuidance.deleteMany({ projectId, milestoneId });
+      await PhotoGuidance.deleteMany({ projectId, drawId });
       const row = await PhotoGuidance.create({
         projectId,
-        milestoneId,
+        drawId,
         shotList: data.shotList.map((s) => ({
           ...s,
           referenceElementIds: s.referenceElementIds ?? [],
+          referenceLineNumbers: s.referenceLineNumbers ?? [],
         })),
         generatedAt: new Date(),
         modelVersion: MODEL_VERSION,
