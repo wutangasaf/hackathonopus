@@ -39,31 +39,32 @@ export default function GanttBuilder() {
 
   const hydrateFromPlan = useGanttStore((s) => s.hydrateFromPlan);
   const seedScaffold = useGanttStore((s) => s.seedScaffold);
-  const seeded = useGanttStore((s) => s.seeded);
+  const resetAll = useGanttStore((s) => s.resetAll);
   const addDocRef = useGanttStore((s) => s.addDocRef);
   const reorderMilestones = useGanttStore((s) => s.reorderMilestones);
   const milestones = useGanttStore((s) => s.milestones);
   const loanAmount = useGanttStore((s) => s.loanAmount);
   const validate = useGanttStore((s) => s.validate);
 
-  // One-shot hydration: plan wins if present; otherwise seed an 8-row scaffold.
-  const hydrated = useRef(false);
+  // Rebind the (singleton) store to the current project: reset + hydrate or
+  // seed. Keyed on projectId so navigating between projects doesn't leak the
+  // previous project's milestones, planDocRefs, or header fields.
+  const boundProjectId = useRef<string | null>(null);
   useEffect(() => {
-    if (hydrated.current) return;
+    if (!projectId) return;
     if (financePlan.isLoading) return;
-    if (financePlan.data) {
-      hydrateFromPlan(financePlan.data);
-      hydrated.current = true;
-    } else if (!seeded) {
-      seedScaffold();
-      hydrated.current = true;
-    }
+    if (boundProjectId.current === projectId) return;
+    resetAll();
+    if (financePlan.data) hydrateFromPlan(financePlan.data);
+    else seedScaffold();
+    boundProjectId.current = projectId;
   }, [
+    projectId,
     financePlan.data,
     financePlan.isLoading,
     hydrateFromPlan,
     seedScaffold,
-    seeded,
+    resetAll,
   ]);
 
   const sensors = useSensors(

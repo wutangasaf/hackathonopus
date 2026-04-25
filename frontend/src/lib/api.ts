@@ -188,7 +188,7 @@ export const api = {
   createReport: (id: string, opts: { milestoneId?: string } = {}) =>
     json<GapReport>(
       `/api/projects/${id}/reports${qs({ milestoneId: opts.milestoneId })}`,
-      { method: "POST" },
+      { method: "POST", body: "{}" },
     ),
   listReports: (id: string) =>
     json<GapReport[]>(`/api/projects/${id}/reports`),

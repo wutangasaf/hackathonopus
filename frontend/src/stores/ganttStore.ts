@@ -62,6 +62,7 @@ type GanttState = {
   hydrateFromPlan(plan: FinancePlan): void;
   seedScaffold(loanAmount?: number): void;
   resetScaffold(): void;
+  resetAll(): void;
   setField<K extends keyof GanttState>(key: K, value: GanttState[K]): void;
   setMilestoneField<K extends keyof DraftMilestone>(
     localId: string,
@@ -258,25 +259,31 @@ function defaultScaffold(
   return draft;
 }
 
-export const useGanttStore = create<GanttState>((set, get) => ({
-  loanType: "residential",
-  loanAmount: 1_000_000,
-  totalBudget: 1_200_000,
-  retainagePct: 10,
-  retainageStepDownAt: 50,
-  retainageStepDownTo: 5,
-  coThresholdSingle: 25_000,
-  coThresholdCumulativePct: 5,
-  materialDelayDays: 30,
-  cureDaysMonetary: 10,
-  cureDaysNonMonetary: 15,
-  kickoffDate: new Date().toISOString(),
-  requiredCompletionDate: addDays(new Date(), 175).toISOString(),
+const freshDefaults = () => {
+  const now = new Date();
+  return {
+    loanType: "residential" as LoanType,
+    loanAmount: 1_000_000,
+    totalBudget: 1_200_000,
+    retainagePct: 10,
+    retainageStepDownAt: 50,
+    retainageStepDownTo: 5,
+    coThresholdSingle: 25_000,
+    coThresholdCumulativePct: 5,
+    materialDelayDays: 30,
+    cureDaysMonetary: 10,
+    cureDaysNonMonetary: 15,
+    kickoffDate: now.toISOString(),
+    requiredCompletionDate: addDays(now, 175).toISOString(),
+    milestones: [] as DraftMilestone[],
+    selectedLocalId: null as string | null,
+    seeded: false,
+    trancheOverrides: {} as Record<string, true>,
+  };
+};
 
-  milestones: [],
-  selectedLocalId: null,
-  seeded: false,
-  trancheOverrides: {},
+export const useGanttStore = create<GanttState>((set, get) => ({
+  ...freshDefaults(),
 
   hydrateFromPlan(plan) {
     // Treat every hydrated tranche as user-owned. The saved plan may have
@@ -334,6 +341,10 @@ export const useGanttStore = create<GanttState>((set, get) => ({
 
   resetScaffold() {
     get().seedScaffold(get().loanAmount);
+  },
+
+  resetAll() {
+    set(freshDefaults());
   },
 
   setField(key, value) {

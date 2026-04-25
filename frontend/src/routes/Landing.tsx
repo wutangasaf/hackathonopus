@@ -46,7 +46,7 @@ const INPUTS: Input[] = [
     num: "02",
     chip: "G703 · slow",
     title: "Finance plan",
-    body: "Schedule of Values with milestones tied to required completion per discipline. Agent 3 parses line items + draws. Each milestone gates a dollar release.",
+    body: "Schedule of Values with milestones tied to required completion per discipline. Agent 3 is form-first intake with Zod cross-field validation — no model call. Each milestone gates a dollar release.",
     cadence: "Once at loan origination · Amended on CO",
   },
   {
@@ -63,7 +63,7 @@ type Agent = {
   num: string;
   title: string;
   body: string;
-  kind: "vision" | "text";
+  kind: "vision" | "text" | "form";
 };
 
 const AGENTS: Agent[] = [
@@ -82,8 +82,8 @@ const AGENTS: Agent[] = [
   {
     num: "03",
     title: "Finance Plan",
-    body: "SOV line items, milestones, draw requirements.",
-    kind: "vision",
+    body: "Form intake · Zod validation. No model call.",
+    kind: "form",
   },
   {
     num: "04",
@@ -231,7 +231,7 @@ export default function Landing() {
             className="grid grid-cols-1 items-center gap-12 lg:grid-cols-[1.4fr_1fr] lg:gap-16"
           >
             <motion.div variants={fadeUp}>
-              <Eyebrow>Built with Opus 4.7 · Hackathon preview · Apr 2026</Eyebrow>
+              <Eyebrow>Built with Opus 4.7 · Built for the hackathon · Apr 2026</Eyebrow>
               <h1 className="mt-6 break-words font-black leading-[0.88] tracking-[-0.055em] text-fg text-[clamp(44px,9.4vw,148px)]">
                 Build
                 <br />
@@ -249,7 +249,7 @@ export default function Landing() {
                 The draw verdict cites every SOV line, in minutes.
               </p>
               <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 border-l-2 border-accent pl-4">
-                <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-fg-dim">
+                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-fg-dim">
                   Capture channels
                 </span>
                 <span className="inline-flex items-center gap-[6px] font-mono text-[11px] uppercase tracking-[0.12em] text-fg">
@@ -341,7 +341,7 @@ export default function Landing() {
                       {input.body}
                     </p>
                   </div>
-                  <div className="mt-7 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+                  <div className="mt-7 font-mono text-[11px] uppercase tracking-wider text-fg-muted">
                     {input.cadence}
                   </div>
                 </motion.article>
@@ -363,7 +363,7 @@ export default function Landing() {
                 <span className="text-accent">agents</span>.
               </>
             }
-            lead="Each agent does one thing well, with strict tool-use schemas and full token accounting. Four call Opus 4.7 vision; two are text-only. The orchestration is deterministic; the reasoning is not."
+            lead="Each agent does one thing well, with strict tool-use schemas and full token accounting. Four call Opus 4.7 vision, two are text-only, and one is a form-driven ingest with Zod validation. The orchestration is deterministic; the reasoning is not."
           />
 
           {/* Pipeline rail with nodes */}
@@ -409,15 +409,21 @@ export default function Landing() {
                       {agent.body}
                     </p>
                   </div>
-                  <div className="mt-4 flex items-center gap-[6px] border-t border-line pt-4 font-mono text-[10px] uppercase tracking-wider text-fg-muted">
+                  <div className="mt-4 flex items-center gap-[6px] border-t border-line pt-4 font-mono text-[11px] uppercase tracking-wider text-fg-muted">
                     <span
                       aria-hidden
                       className={cn(
                         "inline-block h-[6px] w-[6px]",
-                        agent.kind === "vision" ? "bg-warn" : "bg-accent",
+                        agent.kind === "vision" && "bg-warn",
+                        agent.kind === "text" && "bg-accent",
+                        agent.kind === "form" && "bg-success",
                       )}
                     />
-                    {agent.kind === "vision" ? "Vision" : "Text"}
+                    {agent.kind === "vision"
+                      ? "Vision"
+                      : agent.kind === "text"
+                      ? "Text"
+                      : "Form"}
                   </div>
                 </motion.article>
               ))}
@@ -433,6 +439,10 @@ export default function Landing() {
               <span className="inline-flex items-center gap-2">
                 <i aria-hidden className="inline-block h-2 w-2 bg-accent" />
                 Text
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <i aria-hidden className="inline-block h-2 w-2 bg-success" />
+                Form
               </span>
             </div>
             <div>
@@ -455,7 +465,7 @@ export default function Landing() {
                 <span className="text-accent">Signable</span>.
               </>
             }
-            lead="The Gap Report is the one artifact the CRMC signs and the bank funds against. Every cell cites photos. Every deviation carries a flag. Every verdict is traceable to the evidence that produced it."
+            lead="The Gap Report is the one artifact the CRMC signs and the bank funds against. Every cell cites photos. Every deviation carries a flag. Every verdict is traceable to the evidence that produced it — reducing fraud at every draw."
           />
           <motion.div variants={fadeUp}>
             <div className="border border-line-strong bg-bg-1 p-10">
@@ -482,7 +492,7 @@ export default function Landing() {
                   </div>
                 </div>
                 <div className="flex min-w-[280px] flex-col items-end gap-[6px]">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-fg-dim">
                     Draw verdict
                   </span>
                   <span className="border border-success/30 bg-success/10 px-3.5 py-1.5 font-mono text-[12px] uppercase tracking-[0.14em] text-success">
@@ -512,7 +522,7 @@ export default function Landing() {
                     {MATRIX_COLS.map((col) => (
                       <div
                         key={col}
-                        className="bg-bg-1 px-[6px] py-2 text-center font-mono text-[9px] uppercase tracking-[0.08em] text-fg-muted"
+                        className="bg-bg-1 px-[6px] py-2 text-center font-mono text-[11px] uppercase tracking-[0.08em] text-fg-muted"
                       >
                         {col}
                       </div>
@@ -533,7 +543,7 @@ export default function Landing() {
                         key={d.title}
                         className="grid grid-cols-[auto_1fr_auto] items-start gap-3 bg-bg px-4 py-[14px]"
                       >
-                        <span className="whitespace-nowrap border border-danger/40 bg-danger/15 px-2 py-[2px] font-mono text-[9px] uppercase tracking-[0.12em] text-danger">
+                        <span className="whitespace-nowrap border border-danger/40 bg-danger/15 px-2 py-[2px] font-mono text-[11px] uppercase tracking-[0.12em] text-danger">
                           {d.tag}
                         </span>
                         <div>
@@ -544,7 +554,7 @@ export default function Landing() {
                             {d.body}
                           </div>
                         </div>
-                        <span className="whitespace-nowrap font-mono text-[10px] tracking-[0.06em] text-fg-dim">
+                        <span className="whitespace-nowrap font-mono text-[11px] tracking-[0.06em] text-fg-dim">
                           {d.cite}
                         </span>
                       </div>
@@ -552,7 +562,7 @@ export default function Landing() {
                   </div>
 
                   <div className="mt-8 border-l-2 border-accent bg-bg px-6 py-5">
-                    <div className="mb-2 font-mono text-[10px] uppercase tracking-wider text-fg-dim">
+                    <div className="mb-2 font-mono text-[11px] uppercase tracking-wider text-fg-dim">
                       Narrative · CRMC draft
                     </div>
                     <p className="text-sm leading-[1.6] text-fg">
@@ -680,7 +690,7 @@ function Legend() {
       {items.map((it) => (
         <span
           key={it.tone}
-          className="inline-flex items-center gap-[6px] font-mono text-[10px] uppercase tracking-wider text-fg-dim"
+          className="inline-flex items-center gap-[6px] font-mono text-[11px] uppercase tracking-wider text-fg-dim"
         >
           <span aria-hidden className={cn("h-[10px] w-[10px]", legendDot(it.tone))} />
           {it.label}
@@ -706,14 +716,14 @@ function legendDot(tone: Exclude<CellTone, "na">): string {
 function MatrixRowCells({ row }: { row: MatrixRow }) {
   return (
     <>
-      <div className="flex items-center justify-end bg-bg-1 px-[14px] py-2 font-mono text-[9px] uppercase tracking-[0.08em] text-fg-muted">
+      <div className="flex items-center justify-end bg-bg-1 px-[14px] py-2 font-mono text-[11px] uppercase tracking-[0.08em] text-fg-muted">
         {row.label}
       </div>
       {row.cells.map((c, i) => (
         <div
           key={i}
           className={cn(
-            "flex aspect-square cursor-pointer items-center justify-center font-mono text-[10px] font-semibold transition-transform hover:z-10 hover:scale-[1.08]",
+            "flex aspect-square cursor-pointer items-center justify-center font-mono text-[12px] font-semibold transition-transform hover:z-10 hover:scale-[1.08]",
             c.tone !== "miss" && "bg-bg-2 text-fg",
             CELL_TONE_CLASS[c.tone],
           )}
