@@ -70,6 +70,7 @@ A `Draw` is one monthly payment application: the contractor uploads a G703 (requ
 | GET    | `/:id/draws/:drawId`                                     | Full detail including `lines[]` with AI suggestions + contractor approval state.            |
 | PATCH  | `/:id/draws/:drawId/lines/:lineIndex`                    | Body `{ approvalStatus: "pending"\|"confirmed"\|"overridden", confirmedMilestoneId? }`. `overridden` requires `confirmedMilestoneId`. |
 | POST   | `/:id/draws/:drawId/approve`                             | Finalise. 409 if any row still `pending` or status ≠ `ready_for_review`. Sets `status="approved"`, `approvedAt=now`, backfills `confirmedMilestoneId` from the AI suggestion for confirmed rows. |
+| GET    | `/:id/draws/:drawId/verification`                        | Read-only join: each draw line + its matching `sovLineFinding` (per-G703-line verdict from the latest GapReport) + photo evidence + per-line and aggregate `claimed` / `verified` totals. No agent run. Used by the inspector / report UI to render the draw verdict. |
 
 `Draw.status` progresses `parsing → ready_for_review → approved` (or `failed` if the extractor throws). The frontend polls `GET /:id/draws/:drawId` until `status="ready_for_review"` before rendering the review table. Each `lines[].aiConfidence` is `0–1`; surface rows `<0.85` as requiring an explicit action.
 
@@ -93,11 +94,17 @@ The hardcoded demo contractor lives in `src/lib/defaultContractor.ts` and is sna
 
 ### Reports
 
-| Method | Path                                  | Notes                                                   |
-|--------|---------------------------------------|---------------------------------------------------------|
-| POST   | `/:id/reports?milestoneId=…`          | Synchronous — runs Agent 7. Returns the GapReport (201). |
-| GET    | `/:id/reports`                        | List reports, newest first.                             |
-| GET    | `/:id/reports/:reportId`              | One report.                                             |
+| Method | Path                                                        | Notes                                                   |
+|--------|-------------------------------------------------------------|---------------------------------------------------------|
+| POST   | `/:id/reports?milestoneId=…` *or* `?drawId=…`              | Synchronous — runs Agent 7. Returns the GapReport (201). When `drawId` is passed, the agent picks the most-claimed milestone among that draw's confirmed lines (Σ `amountThisPeriod`, tie-broken by lowest `sequence`) and the resulting report is tagged with `drawId`. Pass nothing to default to the first non-terminal milestone. |
+| GET    | `/:id/reports`                                              | List reports, newest first.                             |
+| GET    | `/:id/reports/:reportId`                                    | One report.                                             |
+
+**Per-G703-line verdict** lives on `GapReport.sovLineFindings[]` — each entry has `sovLineNumber` (the join key), `claimedPct`, `observedPct`, `variance`, `flag` ∈ `{ok, minor, material, unapproved_scope}`, and `evidencePhotoIds[]` (Document refs).
+
+**Join key.** `Draw.lines[].lineNumber` (string, set by `G703Extractor`) === `FinancePlan.sov[].lineNumber` (string, set at plan upload) === `GapReport.sovLineFindings[].sovLineNumber` (string, set by Agent 7). The G703 extractor is fed the master SOV's line numbers in its system prompt and required to match each row's `scheduledValue` within 1%, so the join is stable by construction.
+
+**Milestone progress rollup (formula, not yet endpoint-backed).** Each `Draw.lines[i]` carries `confirmedMilestoneId`. To compute a milestone's observed % completion, gather every confirmed/overridden line where `confirmedMilestoneId === milestone._id` across approved draws, look up each line's matching `sovLineFinding.observedPct` from the latest report, then `Σ(observedPct × scheduledValue) / Σ(scheduledValue)`. The dedicated rollup endpoint and the Gantt overlay that consumes it are tracked as Phase 2 work.
 
 ### Runs (observability)
 
@@ -159,6 +166,8 @@ src/
 Supervisor-only collections (bolt-on, never read by the pipeline): `SupervisorSession`, `SupervisorFinding`, `ReinspectionRequest`, `ManagedAgentsConfig` (singleton cache for the Agent + Environment IDs).
 
 A `Draw` is the monthly draw request: one per `{projectId, drawNumber}`, owns embedded `lines[]` (the parsed G703 rows + AI milestone suggestion + contractor approval), references the underlying `Document` rows for the uploaded G703/G702, and links to the `AgentRun` row that produced the extraction.
+
+A `GapReport` is the verdict surface for a draw. Schema-wise it carries an optional `drawId` (the draw it was generated for) and a `milestoneId` (the milestone the agent compared photos against). The per-G703-line judgments — claimed % vs observed %, flag, photo citations — live on `sovLineFindings[]`. See **§Reports** above for the join keys and the milestone-progress rollup formula.
 
 ### Agent: G703Extractor
 

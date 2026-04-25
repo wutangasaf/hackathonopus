@@ -210,7 +210,7 @@ export default function DrawRequest() {
 
           {phase.kind === "submitted" && (
             <>
-              <SubmittedCard draw={phase.draw} />
+              <SubmittedCard draw={phase.draw} projectId={projectId} />
               <div className="mx-auto mt-6 flex max-w-xl flex-col items-center gap-2">
                 <button
                   type="button"

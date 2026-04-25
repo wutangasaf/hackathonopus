@@ -501,10 +501,49 @@ export type PatchDrawLineRequest = {
   confirmedMilestoneId?: string;
 };
 
+export type DrawVerificationLine = {
+  lineNumber: string;
+  description: string;
+  csiCode: string | null;
+  confirmedMilestoneId: string | null;
+  approvalStatus: DrawLineApprovalStatus;
+  claimedAmount: number;
+  claimedPctCumulative: number;
+  finding: {
+    claimedPct: number;
+    observedPct: number;
+    variance: number;
+    flag: SovFlag;
+    evidencePhotoIds: string[];
+  } | null;
+  verifiedAmount: number | null;
+};
+
+export type DrawVerification = {
+  drawId: ObjectIdString;
+  drawNumber: number;
+  contractor: { name: string; companyName: string; licenseNumber?: string };
+  status: DrawStatus;
+  approvedAt: IsoDateString | null;
+  reportId: ObjectIdString | null;
+  reportGeneratedAt: IsoDateString | null;
+  reportDrawId: ObjectIdString | null;
+  lines: DrawVerificationLine[];
+  totals: {
+    claimed: number;
+    verified: number;
+    linesOk: number;
+    linesMinor: number;
+    linesMaterial: number;
+    linesUnevaluated: number;
+  };
+};
+
 export type GapReport = {
   _id: ObjectIdString;
   projectId: ObjectIdString;
   milestoneId: ObjectIdString;
+  drawId?: ObjectIdString;
   perElement: PerElementFinding[];
   sovLineFindings: SovLineFinding[];
   overallStatus: OverallStatus;

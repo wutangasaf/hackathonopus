@@ -970,8 +970,11 @@ function ReportRow({
           {report.drawVerdict.reasoning.slice(0, 80) || "Gap report"}
         </div>
         <div className="mt-1 font-mono text-[10px] uppercase tracking-mono text-fg-muted">
-          {report.overallStatus} · Milestone {report.milestoneId.slice(-6)} ·{" "}
-          {relativeTime(report.generatedAt)}
+          {report.overallStatus} ·{" "}
+          {report.drawId
+            ? `Draw ${report.drawId.slice(-6)}`
+            : `Milestone ${report.milestoneId.slice(-6)}`}{" "}
+          · {relativeTime(report.generatedAt)}
         </div>
       </div>
       <VerdictChip verdict={report.drawVerdict.verdict} />

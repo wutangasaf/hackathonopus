@@ -6,7 +6,9 @@ import { Container } from "@/components/layout/Container";
 import { Nav } from "@/components/layout/Nav";
 import { relativeTime } from "@/lib/time";
 import type {
+  Draw,
   DrawVerdictValue,
+  DrawVerification,
   GapReport,
   OverallStatus,
   PerElementStatus,
@@ -14,6 +16,7 @@ import type {
 } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useReport } from "@/services/reports";
+import { useDraw, useDrawVerification } from "@/services/draws";
 
 export default function Report() {
   const { id, reportId } = useParams<{ id: string; reportId: string }>();
@@ -57,11 +60,21 @@ export default function Report() {
 }
 
 function ReportBody({ report }: { report: GapReport }) {
+  const draw = useDraw(report.projectId, report.drawId);
+  const verification = useDrawVerification(report.projectId, report.drawId);
   return (
     <div className="space-y-10">
-      <VerdictHeader report={report} />
+      <VerdictHeader
+        report={report}
+        draw={draw.data ?? null}
+        verification={verification.data ?? null}
+      />
       <PerElementMatrix report={report} />
-      <SovFindings report={report} />
+      {verification.data ? (
+        <DrawLineVerdicts verification={verification.data} />
+      ) : (
+        <SovFindings report={report} />
+      )}
       {report.unapprovedDeviations.length > 0 && (
         <UnapprovedDeviations items={report.unapprovedDeviations} />
       )}
@@ -73,15 +86,39 @@ function ReportBody({ report }: { report: GapReport }) {
 
 // ---------- verdict header ----------
 
-function VerdictHeader({ report }: { report: GapReport }) {
+function VerdictHeader({
+  report,
+  draw,
+  verification,
+}: {
+  report: GapReport;
+  draw: Draw | null;
+  verification: DrawVerification | null;
+}) {
+  const isDrawScoped = Boolean(report.drawId);
+  const heading = isDrawScoped
+    ? draw
+      ? `Draw #${draw.drawNumber}`
+      : `Draw ${report.drawId?.slice(-6) ?? ""}`
+    : `Milestone ${report.milestoneId.slice(-6)}`;
+  const subhead = isDrawScoped
+    ? draw
+      ? `${draw.contractor.companyName} · Milestone ${report.milestoneId.slice(-6)}`
+      : `Milestone ${report.milestoneId.slice(-6)}`
+    : null;
   return (
     <section className="border border-line-strong bg-bg-1 p-8">
       <div className="flex flex-wrap items-start justify-between gap-8">
         <div>
           <Eyebrow>Draw verdict</Eyebrow>
           <h1 className="mt-4 text-[clamp(34px,4.4vw,60px)] font-extrabold leading-none tracking-[-0.035em]">
-            Milestone {report.milestoneId.slice(-6)}
+            {heading}
           </h1>
+          {subhead && (
+            <div className="mt-2 font-mono text-[11px] uppercase tracking-[0.14em] text-fg-muted">
+              {subhead}
+            </div>
+          )}
           <div className="mt-4 flex flex-wrap gap-6 font-mono text-[11px] tracking-[0.1em] text-fg-dim">
             <span>
               Generated{" "}
@@ -126,15 +163,44 @@ function VerdictHeader({ report }: { report: GapReport }) {
             Verdict
           </span>
           <VerdictTag verdict={report.drawVerdict.verdict} />
-          {typeof report.remainingBudget === "number" && (
-            <span className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
-              Remaining budget
-            </span>
-          )}
-          {typeof report.remainingBudget === "number" && (
-            <span className="text-[28px] font-extrabold leading-none tracking-[-0.03em]">
-              {formatUSD(report.remainingBudget)}
-            </span>
+          {verification ? (
+            <>
+              <span className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
+                Verified this draw
+              </span>
+              <span className="text-[28px] font-extrabold leading-none tracking-[-0.03em] text-fg">
+                {formatUSD(verification.totals.verified)}
+              </span>
+              <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-fg-dim">
+                of {formatUSD(verification.totals.claimed)} claimed ·{" "}
+                <b
+                  className={cn(
+                    "font-medium",
+                    verification.totals.linesMaterial > 0
+                      ? "text-danger"
+                      : verification.totals.linesMinor > 0
+                        ? "text-warn"
+                        : "text-success",
+                  )}
+                >
+                  {verification.totals.linesOk}/
+                  {verification.lines.length} lines verified
+                </b>
+              </span>
+            </>
+          ) : (
+            <>
+              {typeof report.remainingBudget === "number" && (
+                <span className="mt-3 font-mono text-[11px] uppercase tracking-[0.12em] text-fg-muted">
+                  Remaining budget
+                </span>
+              )}
+              {typeof report.remainingBudget === "number" && (
+                <span className="text-[28px] font-extrabold leading-none tracking-[-0.03em]">
+                  {formatUSD(report.remainingBudget)}
+                </span>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -206,7 +272,114 @@ function PerElementMatrix({ report }: { report: GapReport }) {
   );
 }
 
-// ---------- sov findings ----------
+// ---------- draw line verdicts (preferred when report is draw-scoped) ----------
+
+function DrawLineVerdicts({
+  verification,
+}: {
+  verification: DrawVerification;
+}) {
+  return (
+    <section>
+      <Eyebrow>
+        Draw-line verdicts · Draw #{verification.drawNumber} ·{" "}
+        {verification.lines.length} lines
+      </Eyebrow>
+      <div className="mt-4 border border-line">
+        <div className="grid grid-cols-[80px_1fr_120px_100px_100px_120px_120px] gap-px border-b border-line-strong bg-bg-1 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+          <HCell>Line</HCell>
+          <HCell>Description</HCell>
+          <HCell>Flag</HCell>
+          <HCell>Claimed %</HCell>
+          <HCell>Observed %</HCell>
+          <HCell>Claimed $</HCell>
+          <HCell>Verified $</HCell>
+        </div>
+        {verification.lines.map((l) => (
+          <div
+            key={l.lineNumber}
+            className="grid grid-cols-[80px_1fr_120px_100px_100px_120px_120px] gap-px border-b border-line last:border-b-0"
+          >
+            <Cell>
+              <span className="font-medium text-fg">{l.lineNumber}</span>
+            </Cell>
+            <Cell>
+              <div className="font-medium text-fg">{l.description}</div>
+              {l.csiCode && (
+                <div className="mt-0.5 text-fg-muted">CSI {l.csiCode}</div>
+              )}
+              {l.finding && l.finding.evidencePhotoIds.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1">
+                  {l.finding.evidencePhotoIds.slice(0, 6).map((pid) => (
+                    <span
+                      key={pid}
+                      className="block h-9 w-9 overflow-hidden border border-line-strong bg-bg-1"
+                      title={`Photo ${pid.slice(-6)}`}
+                    >
+                      <img
+                        src={photoRawUrl(pid)}
+                        alt=""
+                        className="h-full w-full object-cover"
+                        loading="lazy"
+                      />
+                    </span>
+                  ))}
+                  {l.finding.evidencePhotoIds.length > 6 && (
+                    <span className="self-center font-mono text-[10px] text-fg-muted">
+                      +{l.finding.evidencePhotoIds.length - 6}
+                    </span>
+                  )}
+                </div>
+              )}
+            </Cell>
+            <Cell>
+              {l.finding ? (
+                <SovFlagChip flag={l.finding.flag} />
+              ) : l.approvalStatus === "pending" ? (
+                <Chip tone="default">PENDING</Chip>
+              ) : (
+                <Chip tone="default">UNEVALUATED</Chip>
+              )}
+            </Cell>
+            <Cell>{l.finding ? `${l.finding.claimedPct}%` : "—"}</Cell>
+            <Cell>{l.finding ? `${l.finding.observedPct}%` : "—"}</Cell>
+            <Cell>{formatUSD(l.claimedAmount)}</Cell>
+            <Cell
+              className={cn(
+                l.finding && l.verifiedAmount != null
+                  ? l.finding.flag === "ok"
+                    ? "text-success"
+                    : l.finding.flag === "minor"
+                      ? "text-warn"
+                      : "text-danger"
+                  : "text-fg-muted",
+              )}
+            >
+              {l.verifiedAmount != null ? formatUSD(l.verifiedAmount) : "—"}
+            </Cell>
+          </div>
+        ))}
+      </div>
+      {verification.totals.linesUnevaluated > 0 && (
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.12em] text-fg-muted">
+          {verification.totals.linesUnevaluated} line(s) not yet evaluated by
+          this report.
+        </p>
+      )}
+    </section>
+  );
+}
+
+function photoRawUrl(photoId: string): string {
+  // The raw endpoint is /api/projects/:projectId/photos/:photoId/raw, but
+  // this component receives only the photo id. The path is mounted at the
+  // project scope, so we read the project id from the URL.
+  const m = window.location.pathname.match(/\/projects\/([^/]+)\//);
+  const projectId = m?.[1] ?? "";
+  return `/api/projects/${projectId}/photos/${photoId}/raw`;
+}
+
+// ---------- sov findings (legacy fallback when no drawId) ----------
 
 function SovFindings({ report }: { report: GapReport }) {
   if (report.sovLineFindings.length === 0) return null;

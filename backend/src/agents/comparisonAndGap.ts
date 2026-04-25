@@ -9,6 +9,7 @@ import {
   type Discipline,
 } from "../models/planClassification.js";
 import { FinancePlan, type FinancePlanDoc } from "../models/financePlan.js";
+import { Draw } from "../models/draw.js";
 import {
   Observation,
   type ObservationDoc,
@@ -300,15 +301,19 @@ function buildContextPacket(args: {
 
 export async function runComparisonAndGap(
   projectId: Types.ObjectId | string,
-  opts: { milestoneId?: Types.ObjectId | string } = {},
+  opts: {
+    milestoneId?: Types.ObjectId | string;
+    drawId?: Types.ObjectId | string;
+  } = {},
 ) {
   return withAgentRun(
     {
       projectId,
       agentName: AGENT_NAME,
-      input: opts.milestoneId
-        ? { milestoneId: String(opts.milestoneId) }
-        : undefined,
+      input: {
+        ...(opts.milestoneId ? { milestoneId: String(opts.milestoneId) } : {}),
+        ...(opts.drawId ? { drawId: String(opts.drawId) } : {}),
+      },
       modelVersion: MODEL_VERSION,
     },
     async (ctx) => {
@@ -317,18 +322,53 @@ export async function runComparisonAndGap(
       })) as FinancePlanDoc | null;
       if (!plan) throw new Error("no FinancePlan for project");
 
-      const milestone = opts.milestoneId
-        ? plan.milestones.find(
-            (m) => String(m._id) === String(opts.milestoneId),
-          )
+      let derivedMilestoneId: string | undefined;
+      if (opts.drawId && !opts.milestoneId) {
+        const draw = await Draw.findOne({ _id: opts.drawId, projectId });
+        if (!draw) {
+          throw new Error(`draw ${opts.drawId} not on project`);
+        }
+        // Pick the most-claimed milestone across the draw's confirmed lines
+        // (Σ amountThisPeriod), tie-broken by lowest milestone sequence.
+        const claimByMilestone = new Map<string, number>();
+        for (const line of draw.lines) {
+          if (line.approvalStatus === "pending") continue;
+          const mid = line.confirmedMilestoneId ?? line.aiSuggestedMilestoneId;
+          if (!mid) continue;
+          claimByMilestone.set(
+            mid,
+            (claimByMilestone.get(mid) ?? 0) + (line.amountThisPeriod ?? 0),
+          );
+        }
+        if (claimByMilestone.size > 0) {
+          const ranked = Array.from(claimByMilestone.entries())
+            .map(([mid, total]) => {
+              const m = plan.milestones.find((mm) => String(mm._id) === mid);
+              return {
+                mid,
+                total,
+                sequence: m?.sequence ?? Number.POSITIVE_INFINITY,
+              };
+            })
+            .sort((a, b) =>
+              b.total !== a.total ? b.total - a.total : a.sequence - b.sequence,
+            );
+          derivedMilestoneId = ranked[0]?.mid;
+        }
+      }
+
+      const targetMilestoneId = opts.milestoneId ?? derivedMilestoneId;
+
+      const milestone = targetMilestoneId
+        ? plan.milestones.find((m) => String(m._id) === String(targetMilestoneId))
         : plan.milestones
             .slice()
             .sort((a, b) => a.sequence - b.sequence)
             .find((m) => m.status !== "verified" && m.status !== "rejected");
       if (!milestone) {
         throw new Error(
-          opts.milestoneId
-            ? `milestone ${opts.milestoneId} not on finance plan`
+          targetMilestoneId
+            ? `milestone ${targetMilestoneId} not on finance plan`
             : "no active milestone on finance plan",
         );
       }
@@ -502,14 +542,40 @@ export async function runComparisonAndGap(
         sovPhotoMap.set(rc.elementKindOrId, Array.from(photos).map((s) => s as unknown as Types.ObjectId));
       }
 
+      // Photos by discipline: an SOV line tagged with a disciplineHint
+      // gets every photo that observed any element of that discipline. Coarse
+      // but deterministic and matches the agent's own SOV scoping logic.
+      const photosByDiscipline = new Map<Discipline, Set<string>>();
+      for (const agg of aggregated.values()) {
+        for (const [d, pf] of planFormats.entries()) {
+          if (pf.elements.some((e) => e.elementId === agg.elementId)) {
+            if (!photosByDiscipline.has(d)) photosByDiscipline.set(d, new Set());
+            for (const pid of agg.photoIds) {
+              photosByDiscipline.get(d)!.add(String(pid));
+            }
+          }
+        }
+      }
+      const photosByLineNumber = new Map<string, Types.ObjectId[]>();
+      for (const sov of plan.sov) {
+        if (!sov.disciplineHint) continue;
+        const photoSet = photosByDiscipline.get(sov.disciplineHint);
+        if (!photoSet) continue;
+        photosByLineNumber.set(
+          sov.lineNumber,
+          Array.from(photoSet).map((s) => s as unknown as Types.ObjectId),
+        );
+      }
+
       const sovLineFindings = data.sovLineFindings.map((s) => ({
         ...s,
-        evidencePhotoIds: [] as Types.ObjectId[],
+        evidencePhotoIds: photosByLineNumber.get(s.sovLineNumber) ?? [],
       }));
 
       const report = await GapReport.create({
         projectId,
         milestoneId: milestone._id,
+        ...(opts.drawId ? { drawId: opts.drawId } : {}),
         asOf: new Date(),
         perElement: perElementWithCitations,
         sovLineFindings,

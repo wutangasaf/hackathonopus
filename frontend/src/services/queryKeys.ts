@@ -66,6 +66,8 @@ export const queryKeys = {
       [...queryKeys.draws.all(projectId), "detail", drawId] as const,
     latestApproved: (projectId: string) =>
       [...queryKeys.draws.all(projectId), "latest-approved"] as const,
+    verification: (projectId: string, drawId: string) =>
+      [...queryKeys.draws.all(projectId), "verification", drawId] as const,
   },
 
   reports: {

@@ -3,6 +3,7 @@ import { isValidObjectId, Types } from "mongoose";
 import { z } from "zod";
 import { Draw } from "../models/draw.js";
 import { FinancePlan } from "../models/financePlan.js";
+import { GapReport } from "../models/gapReport.js";
 import { Project } from "../models/project.js";
 import { DEFAULT_CONTRACTOR } from "../lib/defaultContractor.js";
 import type { DocumentDoc, DocumentKind } from "../models/document.js";
@@ -193,6 +194,130 @@ const drawsRoutes: FastifyPluginAsync = async (app) => {
       line.approvalStatus = approvalStatus;
       await draw.save();
       return line;
+    },
+  );
+
+  // Read-only join: each draw line + its matching sovLineFinding + photo
+  // evidence + per-line and aggregate $ totals. No agent run. The join key
+  // is `lineNumber` (string) — shared across Draw.lines, FinancePlan.sov,
+  // and GapReport.sovLineFindings by design.
+  app.get<{ Params: { id: string; drawId: string } }>(
+    "/:id/draws/:drawId/verification",
+    async (req, reply) => {
+      const projectId = parseObjectId(req.params.id, reply);
+      if (!projectId) return;
+      if (!isValidObjectId(req.params.drawId)) {
+        return reply.code(400).send({ error: "invalid drawId" });
+      }
+      const draw = await Draw.findOne({
+        _id: req.params.drawId,
+        projectId,
+      });
+      if (!draw) return reply.code(404).send({ error: "draw not found" });
+
+      // Prefer a report tagged with this drawId; fall back to the latest
+      // report for any milestone this draw's lines touch (legacy reports
+      // generated before the drawId field existed).
+      let report = await GapReport.findOne({
+        projectId,
+        drawId: draw._id,
+      }).sort({ generatedAt: -1 });
+
+      if (!report) {
+        const milestoneIds = Array.from(
+          new Set(
+            draw.lines
+              .map((l) => l.confirmedMilestoneId ?? l.aiSuggestedMilestoneId)
+              .filter((m): m is string => Boolean(m)),
+          ),
+        );
+        if (milestoneIds.length > 0) {
+          report = await GapReport.findOne({
+            projectId,
+            milestoneId: { $in: milestoneIds },
+          }).sort({ generatedAt: -1 });
+        }
+      }
+
+      const findingByLine = new Map<
+        string,
+        {
+          claimedPct: number;
+          observedPct: number;
+          variance: number;
+          flag: string;
+          evidencePhotoIds: string[];
+        }
+      >();
+      if (report) {
+        for (const f of report.sovLineFindings) {
+          findingByLine.set(f.sovLineNumber, {
+            claimedPct: f.claimedPct,
+            observedPct: f.observedPct,
+            variance: f.variance,
+            flag: f.flag,
+            evidencePhotoIds: (f.evidencePhotoIds ?? []).map((p) => String(p)),
+          });
+        }
+      }
+
+      const lines = draw.lines.map((l) => {
+        const finding = findingByLine.get(l.lineNumber) ?? null;
+        const verifiedDollars = finding
+          ? Math.round(
+              (l.amountThisPeriod *
+                Math.min(finding.observedPct, finding.claimedPct || 100)) /
+                Math.max(finding.claimedPct, 1),
+            )
+          : 0;
+        return {
+          lineNumber: l.lineNumber,
+          description: l.description,
+          csiCode: l.csiCode ?? null,
+          confirmedMilestoneId: l.confirmedMilestoneId ?? null,
+          approvalStatus: l.approvalStatus,
+          claimedAmount: l.amountThisPeriod,
+          claimedPctCumulative: l.pctCumulative,
+          finding,
+          verifiedAmount: finding ? verifiedDollars : null,
+        };
+      });
+
+      const totals = lines.reduce(
+        (acc, l) => {
+          acc.claimed += l.claimedAmount;
+          if (l.verifiedAmount != null) acc.verified += l.verifiedAmount;
+          if (l.finding) {
+            if (l.finding.flag === "ok") acc.linesOk += 1;
+            else if (l.finding.flag === "minor") acc.linesMinor += 1;
+            else acc.linesMaterial += 1;
+          } else {
+            acc.linesUnevaluated += 1;
+          }
+          return acc;
+        },
+        {
+          claimed: 0,
+          verified: 0,
+          linesOk: 0,
+          linesMinor: 0,
+          linesMaterial: 0,
+          linesUnevaluated: 0,
+        },
+      );
+
+      return {
+        drawId: String(draw._id),
+        drawNumber: draw.drawNumber,
+        contractor: draw.contractor,
+        status: draw.status,
+        approvedAt: draw.approvedAt ?? null,
+        reportId: report ? String(report._id) : null,
+        reportGeneratedAt: report?.generatedAt ?? null,
+        reportDrawId: report?.drawId ? String(report.drawId) : null,
+        lines,
+        totals,
+      };
     },
   );
 

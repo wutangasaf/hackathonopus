@@ -10,6 +10,7 @@ import { api, type ApiError } from "@/lib/api";
 import type {
   Draw,
   DrawLine,
+  DrawVerification,
   PatchDrawLineRequest,
 } from "@/lib/types";
 import { queryKeys } from "@/services/queryKeys";
@@ -113,6 +114,30 @@ export function useInProgressDraws(
           (d) => d.status === "parsing" || d.status === "ready_for_review",
         )
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    ...options,
+  });
+}
+
+/**
+ * Per-line verdict for a draw: claimed $ vs verified $ vs photo evidence.
+ * Pure read endpoint — joins Draw.lines + latest GapReport.sovLineFindings.
+ */
+export function useDrawVerification(
+  projectId: string | undefined,
+  drawId: string | undefined,
+  options?: Omit<
+    UseQueryOptions<DrawVerification, ApiError>,
+    "queryKey" | "queryFn" | "enabled"
+  > & { enabled?: boolean },
+) {
+  return useQuery<DrawVerification, ApiError>({
+    queryKey: queryKeys.draws.verification(
+      projectId ?? "__none__",
+      drawId ?? "__none__",
+    ),
+    queryFn: () =>
+      api.getDrawVerification(projectId as string, drawId as string),
+    enabled: Boolean(projectId && drawId) && (options?.enabled ?? true),
     ...options,
   });
 }

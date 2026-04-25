@@ -7,7 +7,7 @@ import { parseObjectId } from "./util.js";
 const reportsRoutes: FastifyPluginAsync = async (app) => {
   app.post<{
     Params: { id: string };
-    Querystring: { milestoneId?: string };
+    Querystring: { milestoneId?: string; drawId?: string };
   }>("/:id/reports", async (req, reply) => {
     const projectId = parseObjectId(req.params.id, reply);
     if (!projectId) return;
@@ -16,10 +16,15 @@ const reportsRoutes: FastifyPluginAsync = async (app) => {
     if (milestoneId && !isValidObjectId(milestoneId)) {
       return reply.code(400).send({ error: "invalid milestoneId" });
     }
+    const drawId = req.query.drawId;
+    if (drawId && !isValidObjectId(drawId)) {
+      return reply.code(400).send({ error: "invalid drawId" });
+    }
 
     try {
       const { result } = await runComparisonAndGap(projectId, {
         milestoneId,
+        drawId,
       });
       const report = await GapReport.findById(result.gapReportId);
       if (!report) {

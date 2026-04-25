@@ -5,6 +5,7 @@ import type {
   DocumentRecord,
   Draw,
   DrawLine,
+  DrawVerification,
   FinancePlan,
   GapReport,
   Milestone,
@@ -185,9 +186,15 @@ export const api = {
     noContent(`/api/projects/${id}/photos/${photoId}`, { method: "DELETE" }),
 
   // Draw reports (Agent 7)
-  createReport: (id: string, opts: { milestoneId?: string } = {}) =>
+  createReport: (
+    id: string,
+    opts: { milestoneId?: string; drawId?: string } = {},
+  ) =>
     json<GapReport>(
-      `/api/projects/${id}/reports${qs({ milestoneId: opts.milestoneId })}`,
+      `/api/projects/${id}/reports${qs({
+        milestoneId: opts.milestoneId,
+        drawId: opts.drawId,
+      })}`,
       { method: "POST", body: "{}" },
     ),
   listReports: (id: string) =>
@@ -235,6 +242,10 @@ export const api = {
       method: "POST",
       body: "{}",
     }),
+  getDrawVerification: (id: string, drawId: string) =>
+    json<DrawVerification>(
+      `/api/projects/${id}/draws/${drawId}/verification`,
+    ),
 
   // Agent runs
   listRuns: (id: string) => json<AgentRun[]>(`/api/projects/${id}/runs`),

@@ -1,14 +1,24 @@
+import { useNavigate } from "react-router-dom";
+
 import type { Draw } from "@/lib/types";
+import { useCreateReport } from "@/services/reports";
 
 export function SubmittedCard({
   draw,
+  projectId,
   onStartNewDraw,
 }: {
   draw: Draw;
+  projectId: string;
   onStartNewDraw?: () => void;
 }) {
+  const navigate = useNavigate();
   const amount = draw.totalAmountRequested ?? 0;
   const submittedAt = draw.approvedAt ?? draw.updatedAt;
+
+  const createReport = useCreateReport(projectId, {
+    onSuccess: (rep) => navigate(`/projects/${projectId}/reports/${rep._id}`),
+  });
 
   return (
     <div className="mx-auto flex max-w-xl flex-col items-center gap-6 border border-line-strong bg-bg-1 px-10 py-14 text-center">
@@ -32,11 +42,39 @@ export function SubmittedCard({
         <span>Submitted {formatDateTime(submittedAt)}</span>
         <span className="text-fg-dim">Awaiting inspection</span>
       </div>
+
+      <div className="flex w-full flex-col items-center gap-2.5">
+        <button
+          type="button"
+          disabled={createReport.isPending}
+          onClick={() => createReport.mutate({ drawId: draw._id })}
+          className="inline-flex items-center gap-2 bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940] disabled:cursor-not-allowed disabled:bg-accent/60"
+        >
+          {createReport.isPending
+            ? "CRMC drafting verdict…"
+            : "Generate verification report ↗"}
+        </button>
+        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-muted">
+          Per-line claim vs photos · 30–60s
+        </span>
+        {createReport.isError && (
+          <div className="mt-1 w-full border-l-2 border-danger bg-bg-2 p-3 text-left">
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-danger">
+              Error · {createReport.error?.status ?? "unknown"}
+            </div>
+            <p className="mt-1 font-mono text-[11px] text-fg-dim">
+              {createReport.error?.body?.slice(0, 200) ??
+                "Report generation failed"}
+            </p>
+          </div>
+        )}
+      </div>
+
       {onStartNewDraw && (
         <button
           type="button"
           onClick={onStartNewDraw}
-          className="mt-2 inline-flex items-center gap-2 bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940]"
+          className="mt-2 inline-flex items-center gap-2 border border-line-strong px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-fg transition-colors hover:bg-bg-2"
         >
           Start draw #{draw.drawNumber + 1} ↗
         </button>

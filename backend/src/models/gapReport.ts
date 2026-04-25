@@ -85,6 +85,7 @@ const gapReportSchema = new Schema(
       index: true,
     },
     milestoneId: { type: Schema.Types.ObjectId },
+    drawId: { type: Schema.Types.ObjectId, ref: "Draw", index: true },
     asOf: { type: Date, required: true },
     perElement: { type: [perElementSchema], default: [] },
     sovLineFindings: { type: [sovLineFindingSchema], default: [] },

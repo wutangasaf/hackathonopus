@@ -46,7 +46,7 @@ export function useReport(
   });
 }
 
-export type CreateReportInput = { milestoneId?: string };
+export type CreateReportInput = { milestoneId?: string; drawId?: string };
 
 /**
  * Generate a new Gap Report. Synchronous, 30–60s — the UI must show a
