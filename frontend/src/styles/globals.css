@@ -14,9 +14,9 @@
     --fg-muted: #8a8a8a;
     --line: rgba(255, 255, 255, 0.08);
     --line-strong: rgba(255, 255, 255, 0.18);
-    --accent: #ff6b1a;
-    --accent-dim: rgba(255, 107, 26, 0.14);
-    --accent-glow: rgba(255, 107, 26, 0.55);
+    --accent: #22d3ee;
+    --accent-dim: rgba(34, 211, 238, 0.14);
+    --accent-glow: rgba(34, 211, 238, 0.55);
     --success: #00d97e;
     --warn: #ffb800;
     --danger: #ff3b30;
@@ -35,7 +35,7 @@
     @apply font-sans;
   }
 
-  /* Signature: a thin orange plumbline running down the left edge of the
+  /* Signature: a thin cyan plumbline running down the left edge of the
      page. Brand structure, not decoration — must appear on every route. */
   body::before {
     content: "";
@@ -46,9 +46,9 @@
     width: 1px;
     background: linear-gradient(
       to bottom,
-      rgba(255, 107, 26, 0.55) 0%,
-      rgba(255, 107, 26, 0.18) 35%,
-      rgba(255, 107, 26, 0.06) 70%,
+      rgba(34, 211, 238, 0.55) 0%,
+      rgba(34, 211, 238, 0.18) 35%,
+      rgba(34, 211, 238, 0.06) 70%,
       transparent 100%
     );
     pointer-events: none;

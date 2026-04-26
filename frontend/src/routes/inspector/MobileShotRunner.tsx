@@ -296,7 +296,7 @@ export function MobileShotRunner({
             "flex h-14 flex-1 items-center justify-center gap-2 font-mono text-[13px] font-bold uppercase tracking-[0.18em] transition-colors",
             needsRetake
               ? "bg-danger text-black active:bg-danger/80"
-              : "bg-accent text-black active:bg-[#ff8940]",
+              : "bg-accent text-black active:bg-[#67e8f9]",
             (uploading ||
               awaitingAssessment ||
               !project?._id ||

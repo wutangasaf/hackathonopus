@@ -98,7 +98,7 @@ function Step({ index, label, hint, state, href }: StepProps) {
     <div
       className={cn(
         "flex items-start gap-4 border-l border-line px-6 py-5 md:border-l first:border-l-0 md:first:border-l-0 md:border-t-0 transition-colors",
-        state === "active" && "bg-[rgba(255,107,26,0.04)]",
+        state === "active" && "bg-[rgba(34,211,238,0.04)]",
         href && "hover:bg-bg-2",
       )}
     >

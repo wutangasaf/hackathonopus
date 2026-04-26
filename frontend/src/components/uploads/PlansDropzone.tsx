@@ -109,7 +109,7 @@ export function PlansDropzone({ projectId }: { projectId: string }) {
             <div className="mt-2 space-y-5 text-[13px] leading-[1.55] text-fg-dim">
               <p>
                 For recurring counterparty formats (same GC's SOV, same
-                architect's titleblock, same bank's draw schedule), Plumbline
+                architect's titleblock, same bank's draw schedule), Plumbline.ai
                 can skip the LLM extraction step and parse deterministically
                 against a saved template.
               </p>
@@ -159,7 +159,7 @@ export function PlansDropzone({ projectId }: { projectId: string }) {
                 onClick={() => setTemplateOpen(false)}
                 className={cn(
                   "h-auto rounded-none border border-transparent bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-black shadow-none",
-                  "hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.15)]",
+                  "hover:bg-[#67e8f9] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.15)]",
                 )}
               >
                 Apply template (mock)

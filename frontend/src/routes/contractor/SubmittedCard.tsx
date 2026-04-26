@@ -48,7 +48,7 @@ export function SubmittedCard({
           type="button"
           disabled={createReport.isPending}
           onClick={() => createReport.mutate({ drawId: draw._id })}
-          className="inline-flex items-center gap-2 bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940] disabled:cursor-not-allowed disabled:bg-accent/60"
+          className="inline-flex items-center gap-2 bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#67e8f9] disabled:cursor-not-allowed disabled:bg-accent/60"
         >
           {createReport.isPending
             ? "CRMC drafting verdict…"

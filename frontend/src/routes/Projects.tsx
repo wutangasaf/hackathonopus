@@ -232,7 +232,7 @@ function NewProjectDialog({
         <Button
           className={cn(
             "h-auto gap-[10px] rounded-none border border-transparent bg-accent px-[26px] py-[14px] font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-black shadow-none",
-            "hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.15)]",
+            "hover:bg-[#67e8f9] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.15)]",
           )}
         >
           <Plus className="!size-3.5" strokeWidth={2} />
@@ -287,7 +287,7 @@ function NewProjectDialog({
               disabled={mutation.isPending}
               className={cn(
                 "h-auto rounded-none border border-transparent bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-eyebrow text-black shadow-none",
-                "hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.15)]",
+                "hover:bg-[#67e8f9] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.15)]",
                 "disabled:bg-accent/60",
               )}
             >

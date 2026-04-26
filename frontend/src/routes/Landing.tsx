@@ -220,7 +220,7 @@ export default function Landing() {
             width: "70%",
             height: "540px",
             background:
-              "radial-gradient(ellipse at center, rgba(255,107,26,0.07), transparent 60%)",
+              "radial-gradient(ellipse at center, rgba(34,211,238,0.07), transparent 60%)",
           }}
         />
         <Container>
@@ -242,7 +242,7 @@ export default function Landing() {
                 on <span className="text-accent">proof</span>.
               </h1>
               <p className="mt-5 max-w-[560px] text-fg-dim text-[clamp(15px,1.35vw,19px)] leading-[1.55]">
-                AI co-pilot for bank-financed construction. Plumbline ingests
+                AI co-pilot for bank-financed construction. Plumbline.ai ingests
                 the full plan set — drawings at scale, BoQ, specifications,
                 RFIs, COs — binds it to an AIA G702/G703 schedule of values,
                 and reconciles both against authenticated jobsite evidence.
@@ -275,7 +275,7 @@ export default function Landing() {
               <div className="mt-8 flex flex-wrap gap-3">
                 <Link
                   to="/projects"
-                  className="inline-flex items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
+                  className="inline-flex items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#67e8f9] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.18)]"
                 >
                   Bank · start a project <span aria-hidden>↗</span>
                 </Link>
@@ -317,7 +317,7 @@ export default function Landing() {
                 One <span className="text-accent">verdict</span>.
               </>
             }
-            lead="Every Plumbline verdict is the composition of three things — the plans the bank pinned to the loan, the finance plan that prices them, and the imagery that proves them. Each arrives on its own cadence."
+            lead="Every Plumbline.ai verdict is the composition of three things — the plans the bank pinned to the loan, the finance plan that prices them, and the imagery that proves them. Each arrives on its own cadence."
           />
           <motion.div variants={stagger}>
             <BlockGrid className="grid-cols-1 lg:grid-cols-3">
@@ -594,7 +594,7 @@ export default function Landing() {
           className="pointer-events-none absolute left-1/2 top-[-120px] h-[360px] w-3/5 -translate-x-1/2"
           style={{
             background:
-              "radial-gradient(ellipse at center, rgba(255,107,26,0.07), transparent 65%)",
+              "radial-gradient(ellipse at center, rgba(34,211,238,0.07), transparent 65%)",
           }}
         />
         <Container className="relative">
@@ -602,7 +602,7 @@ export default function Landing() {
             <span
               aria-hidden
               className="inline-block h-1.5 w-1.5 bg-accent"
-              style={{ boxShadow: "0 0 8px rgba(255,107,26,0.5)" }}
+              style={{ boxShadow: "0 0 8px rgba(34,211,238,0.5)" }}
             />
             Start a project
           </div>
@@ -619,7 +619,7 @@ export default function Landing() {
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               to="/projects"
-              className="inline-flex items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
+              className="inline-flex items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#67e8f9] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.18)]"
             >
               Bank · start a project <span aria-hidden>↗</span>
             </Link>

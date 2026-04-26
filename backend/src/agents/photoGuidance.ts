@@ -29,7 +29,7 @@ const shotSchema = z.object({
 });
 
 const toolOutputSchema = z.object({
-  shotList: z.array(shotSchema),
+  shotList: z.array(shotSchema).default([]),
 });
 
 type ToolOutput = z.infer<typeof toolOutputSchema>;
@@ -351,7 +351,7 @@ export async function runPhotoGuidance(
           outputSchema: toolOutputSchema,
         },
         model: config.anthropicModel,
-        maxTokens: 4096,
+        maxTokens: 8192,
       });
       ctx.recordUsage(usage);
 

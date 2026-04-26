@@ -8,7 +8,7 @@ export function Footer() {
       <Container className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <span aria-hidden className="inline-block h-3 w-[3px] bg-accent" />
-          <span>PLUMBLINE · Build to plan. Release on proof.</span>
+          <span>PLUMBLINE.AI · Build to plan. Release on proof.</span>
         </div>
         <div>
           © 2026 ·{" "}

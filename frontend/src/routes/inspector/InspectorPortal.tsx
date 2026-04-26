@@ -21,7 +21,7 @@ export default function InspectorPortal() {
               Verify a draw.
             </h1>
             <p className="mt-4 max-w-[560px] text-[14px] leading-[1.6] text-fg-dim">
-              Pick the project you&apos;re inspecting. Plumbline hands you a
+              Pick the project you&apos;re inspecting. Plumbline.ai hands you a
               shot list tied to the approved G703 — capture each one from
               your phone, drone, or sensor feed.
             </p>

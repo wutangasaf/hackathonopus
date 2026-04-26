@@ -289,7 +289,7 @@ function IdleShell({
           Submit a draw request
         </h1>
         <p className="max-w-xl text-[14px] leading-[1.55] text-fg-dim">
-          Drop your AIA-G703 schedule of values. Plumbline parses every
+          Drop your AIA-G703 schedule of values. Plumbline.ai parses every
           line item and pre-maps it to a milestone on the finance plan.
           You confirm or override before the bank sees it.
         </p>
@@ -449,7 +449,7 @@ function FailedScreen({
       <button
         type="button"
         onClick={onTryAgain}
-        className="inline-flex items-center gap-2 bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940]"
+        className="inline-flex items-center gap-2 bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#67e8f9]"
       >
         Try again ↗
       </button>

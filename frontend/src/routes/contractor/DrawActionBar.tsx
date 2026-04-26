@@ -46,7 +46,7 @@ export function DrawActionBar({
             onClick={onApprove}
             disabled={!canApprove || approving}
             aria-disabled={!canApprove || approving}
-            className="inline-flex items-center gap-2 bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940] disabled:cursor-not-allowed disabled:bg-accent/40"
+            className="inline-flex items-center gap-2 bg-accent px-6 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#67e8f9] disabled:cursor-not-allowed disabled:bg-accent/40"
           >
             {approving ? "Submitting…" : "Approve all ↗"}
           </button>

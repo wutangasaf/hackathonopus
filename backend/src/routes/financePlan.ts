@@ -78,7 +78,7 @@ const patchMilestoneSchema = z
     message: "must supply at least one of actualReleasePct, amountReleased, status",
   });
 
-async function validateCrossFields(
+export async function validateCrossFields(
   projectId: string,
   body: FinancePlanInput,
 ): Promise<string[]> {

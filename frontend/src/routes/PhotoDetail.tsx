@@ -182,7 +182,7 @@ function ExifBlock({ exif }: { exif: ExifMeta | undefined }) {
                     href={`https://www.google.com/maps/search/?api=1&query=${exif.gps.lat},${exif.gps.lon}`}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 inline-flex font-mono text-[10px] uppercase tracking-[0.14em] text-accent transition-colors hover:text-[#ff8940]"
+                    className="mt-2 inline-flex font-mono text-[10px] uppercase tracking-[0.14em] text-accent transition-colors hover:text-[#67e8f9]"
                   >
                     Open in Maps ↗
                   </a>

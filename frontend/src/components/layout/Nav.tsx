@@ -16,10 +16,10 @@ export function Nav() {
           <span
             aria-hidden
             className="inline-block h-[14px] w-[3px] bg-accent"
-            style={{ boxShadow: "0 0 12px rgba(255, 107, 26, 0.55)" }}
+            style={{ boxShadow: "0 0 12px rgba(34, 211, 238, 0.55)" }}
           />
           <span className="font-mono text-[13px] font-bold uppercase tracking-[0.16em]">
-            Plumbline
+            Plumbline.ai
           </span>
         </Link>
         <ul className="hidden items-center gap-9 font-mono text-[11px] uppercase tracking-[0.14em] md:flex">
@@ -36,7 +36,7 @@ export function Nav() {
           <li>
             <Link
               to="/projects"
-              className="bg-accent px-3.5 py-2 text-black transition-colors hover:bg-[#ff8940]"
+              className="bg-accent px-3.5 py-2 text-black transition-colors hover:bg-[#67e8f9]"
             >
               Open app ↗
             </Link>

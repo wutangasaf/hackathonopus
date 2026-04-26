@@ -58,7 +58,7 @@ export function DrawVerdictCard() {
             "linear-gradient(180deg, var(--bg-1) 0%, #0d0d0d 100%)",
           transform: "rotate(-0.3deg)",
           boxShadow:
-            "0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 80px -30px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,107,26,0.06)",
+            "0 1px 0 rgba(255,255,255,0.04) inset, 0 30px 80px -30px rgba(0,0,0,0.6), 0 0 0 1px rgba(34,211,238,0.06)",
         }}
       >
         <div className="absolute -left-px inset-y-0 w-0.5 bg-accent" />

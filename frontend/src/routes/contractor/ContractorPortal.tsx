@@ -22,7 +22,7 @@ export default function ContractorPortal() {
             </h1>
             <p className="mt-4 max-w-[560px] text-[14px] leading-[1.6] text-fg-dim">
               Pick the loan you&apos;re billing against. Upload your G703
-              continuation sheet — Plumbline parses every line, maps it to
+              continuation sheet — Plumbline.ai parses every line, maps it to
               the project&apos;s milestones, and gives you one review
               screen before the bank ever sees it.
             </p>

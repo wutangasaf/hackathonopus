@@ -10,9 +10,23 @@ npm run dev         # http://localhost:5173
 npm run typecheck
 npm run build
 npm run lint
+npm test            # vitest run · ~1.5s in jsdom
+npm run test:watch  # vitest watch
 ```
 
 The dev server talks to the backend at `http://localhost:4000` via the `services/` layer (see `src/services/`). Start the backend first (see [`backend/README.md`](../backend/README.md)).
+
+## Testing
+
+Vitest 3 + jsdom + React Testing Library. The suite is a **regression net** focused on the Gantt store's financial math (which the draw verdict ultimately rests on) and a few user-facing utilities — not a coverage drive. 19 tests, ~1.5s. All tests live under `test/` so they're outside `tsconfig.app.json`'s `include: ["src"]` and don't affect `npm run build`.
+
+| File | What it covers |
+|---|---|
+| `test/stores/ganttStore.test.ts` | The Gantt editor store. Drives the public actions: `seedScaffold` (8-phase template with monotonic % and exact tranche sum), `setField('loanAmount', …)` (recomputes non-overridden tranches; preserves user-overridden rows; absorbs rounding drift on the last row), `toCreateRequest` (emits SOV summing exactly to `totalBudget`), `validate` (mirrors backend cross-field rules — golden case + 5 violations including unknown `planDocRefs.documentId`), and `hydrateFromPlan` (round-trips a saved plan; marks every hydrated tranche as a user override so a later loan-amount edit can't silently rewrite bank-edited values). 12 cases. |
+| `test/lib/time.test.ts` | `relativeTime` — `just now` / `Ns ago` / `Nm ago` / `Nh ago` / `Nd ago` / UTC `YYYY-MM-DD` fallback past 7d, plus unparseable-input passthrough. 7 cases. |
+| `test/setup.ts` | `IntersectionObserver` polyfill (framer-motion `whileInView` is silent without it) + `matchMedia` shim. `@testing-library/jest-dom` matchers wired in. |
+
+**Mocking philosophy.** The store is reset between tests via `useGanttStore.getState().resetAll()`. No MSW, no react-query setup, no mocked routes — every test exercises the store's public API directly because that's where the actual bug class (validation drift, overrides being clobbered, project-id binding leaks) would surface. The frontend smoke for `GanttBuilder` rendering is deferred to Tier B; the store-level `hydrateFromPlan` test covers the same regression class without dnd-kit / framer-motion / four mocked react-query hooks under jsdom.
 
 ## UI flow → backend endpoints
 

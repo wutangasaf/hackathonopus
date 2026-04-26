@@ -347,7 +347,7 @@ export function CapturePanel({
                 onClick={submitInPageCapture}
                 disabled={uploading}
                 className={cn(
-                  "inline-flex items-center gap-2 bg-accent px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940] disabled:bg-accent/40",
+                  "inline-flex items-center gap-2 bg-accent px-5 py-3 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#67e8f9] disabled:bg-accent/40",
                 )}
               >
                 {uploading ? "Uploading…" : "Submit capture ↗"}
@@ -372,7 +372,7 @@ export function CapturePanel({
             onClick={() => nativeInputRef.current?.click()}
             disabled={disabled || uploading}
             className={cn(
-              "flex items-center justify-center gap-2 bg-accent px-4 py-4 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#ff8940] disabled:cursor-not-allowed disabled:bg-accent/40",
+              "flex items-center justify-center gap-2 bg-accent px-4 py-4 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-colors hover:bg-[#67e8f9] disabled:cursor-not-allowed disabled:bg-accent/40",
             )}
           >
             <Camera className="!size-4" strokeWidth={2} />
@@ -429,7 +429,7 @@ export function CapturePanel({
       <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-fg-dim">
         On phones, &quot;Open phone camera&quot; launches the native app and
         preserves EXIF. On desktops, &quot;Shoot from this device&quot; uses
-        the webcam — Plumbline stamps timestamp + GPS as sidecar metadata
+        the webcam — Plumbline.ai stamps timestamp + GPS as sidecar metadata
         and tags the capture{" "}
         <span className="text-warn">CLIENT-HINTED</span>.
       </p>

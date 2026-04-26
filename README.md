@@ -1,6 +1,6 @@
-# Plumbline
+# Plumbline.ai
 
-An AI co-pilot for construction draw inspections. Plumbline ingests the approved construction drawings and specifications (structured and unstructured — sealed PDF drawings, BoQ, AIA G703 Schedule of Values, CSI Masterformat specs), the loan's finance plan with milestone tranches, and authenticated site evidence (phone photos in the hackathon slice; drone, 360°, fixed-camera and IoT telemetry in the full product), then produces a Gap Report with a concrete draw verdict — `APPROVE`, `APPROVE_WITH_CONDITIONS`, `HOLD`, or `REJECT` — citing G703 SOV line items and flagging any unapproved scope deviations.
+An AI co-pilot for construction lenders — banks and CRMCs verifying monthly draw requests against the approved plans they're financing. Plumbline.ai ingests the approved construction drawings and specifications (structured and unstructured — sealed PDF drawings, BoQ, AIA G703 Schedule of Values, CSI Masterformat specs), the loan's finance plan with milestone tranches, and authenticated site evidence (phone photos in the hackathon slice; drone, 360°, fixed-camera and IoT telemetry in the full product), then produces a Gap Report with a concrete draw verdict — `APPROVE`, `APPROVE_WITH_CONDITIONS`, `HOLD`, or `REJECT` — citing G703 SOV line items and flagging any unapproved scope deviations.
 
 Built for Anthropic's *Built with Opus 4.7* hackathon (Apr 21–26 2026). MIT licensed.
 
@@ -19,7 +19,7 @@ Plumbline is built around three principles drawn straight from CRMC practice.
 - **Unstructured**: sealed PDF construction drawings (Architectural, Structural, MEP — Mechanical/Electrical/Plumbing), titleblock sheets, redlined markup PDFs, scanned CSI Masterformat specifications, RFIs, Change Order narratives.
 - **Structured**: Bill of Quantities (BoQ) in Excel/CSV, AIA G703 Schedule of Values continuation sheets, structured specs keyed to CSI divisions, project schedules, and (roadmap) CAD/BIM/IFC models and shop drawings.
 
-Agent 1 classifies each document by discipline and sheet role against its titleblock; Agent 2 normalises every format into a single discipline-keyed `PlanFormat` that downstream agents cite line-by-line.
+Agent 1 classifies each document by discipline and sheet role against its titleblock; Agent 2 normalises every format into a single discipline-keyed `PlanFormat` that Agents 4, 6, and 7 cite line-by-line — without it the gap report cannot run.
 
 **3. Finance modelled on lender and AIA best practice.** The `FinancePlan` mirrors conventions a construction-loan administrator already recognises: AIA **G702/G703** application-and-certificate-for-payment structure, SOV line items keyed to **CSI codes**, **retainage** with step-down (default 10 % → 5 % at 50 % completion), **Change Order thresholds** (single-item and cumulative percent of loan) tuned to OCC/FDIC expectations, **cure periods** for monetary vs non-monetary defaults, and milestone tranches whose `plannedReleasePct` values are monotonic and sum to 100. Cross-field Zod validation at ingestion catches the findings that CRMCs most often raise at the draw meeting — SOV sum mismatch, tranche over-allocation, retainage drift — before the first photo is uploaded.
 
@@ -57,11 +57,24 @@ npm install
 npm run dev                        # serves http://localhost:5173
 ```
 
+> **Cost note.** A full draw cycle (Agents 1+2 on plan upload, 4 on guidance, 5+6 per photo, 7 on report) costs roughly **$0.05–$0.10** in Anthropic credits on Opus 4.7. To demo more cheaply set `ANTHROPIC_MODEL=claude-haiku-4-5-20251001` in `backend/.env` (~10× cheaper, slightly lower verdict quality).
+
 Open `http://localhost:5173` and create a project.
+
+### Try it with sample data
+
+Five PDFs in [`docs/sample-pdfs/`](docs/sample-pdfs/) cover the full pipeline end-to-end without you having to find your own AIA G703 / construction plans:
+
+- `A-201-North-Elevation.pdf`, `A-401-Drywall-Partition-Plan.pdf` — architectural sheets
+- `E-101-Electrical-Plan.pdf` — electrical
+- `P-101-Plumbing-Plan.pdf` — plumbing
+- `A-201-Narrow-Draw-G703.pdf` — sample monthly G703 draw request
+
+Upload the four plan PDFs on **Create project**, post the finance plan from `design/sample_finance_plan.json`, then submit the G703 from the **Contractor portal** to walk the monthly draw cycle.
 
 ## The seven-agent pipeline
 
-Six steps are Claude tool-use calls through `backend/src/lib/claudeCall.ts` (enforced tool use, Zod-validated output schema). Agent 3 is a form-driven ingester with Zod cross-field validation — no model call. Every step writes an `AgentRun` row so the UI can stream status.
+Six steps are Claude tool-use calls through `backend/src/lib/claudeCall.ts` (enforced tool use, Zod-validated output schema). Agent 3 is a form-driven ingester with Zod cross-field validation — no model call. Every Claude step writes an `AgentRun` row so the UI can stream status.
 
 ```
                        ┌────────────────────────────────────────────┐
@@ -72,6 +85,7 @@ Six steps are Claude tool-use calls through `backend/src/lib/claudeCall.ts` (enf
                        ┌────────────────────────────────────────────┐
                        │ Agent 2  PlanFormatExtractor      (Claude) │
                        │   per-discipline structured "format" doc   │
+                       │   consumed by Agents 4 · 6 · 7             │
                        └─────────────────┬──────────────────────────┘
                                          ▼
  Upload finance   ──▶  ┌────────────────────────────────────────────┐
@@ -109,7 +123,7 @@ Agents 1 and 2 run as a chained background pipeline triggered by a plan upload. 
 
 ## The monthly draw cycle
 
-The 7-agent pipeline above is the project-setup machinery. Once a project is set up (plans + master SOV + Gantt), Plumbline's recurring value sits in the **monthly draw cycle** — the payment-application loop that the whole construction-lending industry runs on.
+The 7-agent pipeline above is the project-setup machinery. Once a project is set up (plans + master SOV + Gantt), Plumbline's recurring value sits in the **monthly draw cycle** — the payment-application loop that the whole construction-lending industry runs on. The cycle is driven by an 8th Claude agent — `G703Extractor` — that sits outside the numbered project-setup pipeline above.
 
 On every monthly draw the contractor submits an AIA **G702** (cover sheet) and **G703** (line-item continuation sheet). The G703 is the financial document that drives everything Plumbline does that month: it tells the system exactly which SOV line items are being billed, what percentage complete each claim is, and therefore what evidence the site inspector needs to produce.
 
@@ -132,7 +146,7 @@ On every monthly draw the contractor submits an AIA **G702** (cover sheet) and *
                          └────────────────────────────────────────────┘
 ```
 
-A `Draw` is the first-class record of one monthly payment application. It carries the contractor snapshot (hardcoded for the hackathon demo), the uploaded document refs, the extracted `lines[]` with AI milestone suggestions + confidence, and the contractor's per-row confirmation. Draw status walks `parsing → ready_for_review → approved`; the extractor fires in the background on upload and the frontend polls until the review table is ready.
+A `Draw` is the first-class record of one monthly payment application. It carries the contractor snapshot (hardcoded for the hackathon demo), the uploaded document refs, the extracted `lines[]` with AI milestone suggestions + confidence, and the contractor's per-row confirmation. Draw status walks `parsing → ready_for_review → approved` (or `→ rejected` on contractor reject, `→ failed` on extractor crash); the extractor fires in the background on upload and the frontend polls until the review table is ready.
 
 The demo ships the intake + contractor-approval half of this loop plus the Agent 4 rewire: photo guidance now consumes the approved `Draw` directly — `GET /api/projects/:id/photo-guidance?drawId=<id>` (or no arg to auto-pick the latest approved draw). Every shot carries `referenceLineNumbers` so the inspector sees exactly which claimed G703 row it verifies. Rewiring Agents 6 + 7 to key off the approved `Draw` is tracked as the next follow-up.
 
@@ -160,7 +174,7 @@ The seven-agent pipeline above is short-running, deterministic structured extrac
                          └─────────────────┬──────────────────────────┘
                                            ▼
                          ┌────────────────────────────────────────────┐
-                         │ record_finding    (exactly once per run)   │
+                         │ record_finding    (prompt-bound, 1 call)   │
                          │   severity · category · narrative ·        │
                          │   evidence[] · recommendation (APPROVE /   │
                          │   APPROVE_WITH_CONDITIONS / HOLD / REJECT) │
@@ -182,68 +196,7 @@ ANTHROPIC_API_KEY=sk-... npx tsx backend/scripts/smokeSupervisor.ts
 
 ## End-to-end use case
 
-The full happy path, driven by `curl` against a local backend. Replace `$PROJECT` with the id returned from step 1.
-
-**1. Create a project**
-
-```bash
-curl -sX POST http://localhost:4000/api/projects \
-  -H 'content-type: application/json' \
-  -d '{"name":"101 Main","address":"101 Main St"}'
-# → { "_id": "<PROJECT>", ... }
-```
-
-**2. Upload approved construction drawings** (multipart, multiple files ok — kicks off Agents 1 + 2; the demo accepts sealed PDF drawings, the production intake is designed for BoQ / G703 / CSI-spec structured documents alongside unstructured PDFs)
-
-```bash
-curl -sX POST http://localhost:4000/api/projects/$PROJECT/plans \
-  -F 'file=@architectural.pdf' \
-  -F 'file=@structural.pdf'
-# → { "documents": [...], "pendingAgents": ["PlanClassifier","PlanFormatExtractor"],
-#     "pipelineKickedOff": true }
-
-curl -s http://localhost:4000/api/projects/$PROJECT/plan-classification    # poll until present
-curl -s http://localhost:4000/api/projects/$PROJECT/plan-format?discipline=ARCHITECTURE
-```
-
-**3. Post the finance plan** (form-first, AIA G702/G703 shape — Zod cross-field validation: SOV sum vs `totalBudget`, tranche sum vs `loanAmount`, monotonic milestone `plannedReleasePct` ending at 100, retainage step-down consistency, CO threshold sanity)
-
-```bash
-# design/sample_finance_plan.json has PLAN_DOC_PLACEHOLDER refs — strip or swap
-# them for real documentIds returned in step 2 before POSTing.
-jq '.milestones[].planDocRefs=[]' design/sample_finance_plan.json \
-  | curl -sX POST http://localhost:4000/api/projects/$PROJECT/finance-plan \
-      -H 'content-type: application/json' --data-binary @-
-```
-
-Supported `loanType`: `residential`, `commercial_poc`, `hud_221d4`, `hybrid`. `milestones[].status` progresses `pending → in_progress → claimed → verified | rejected`.
-
-**4. Get photo guidance for the approved draw** (Agent 4 — cached per draw; pass `regenerate=1` to force a re-run. Requires an approved `Draw` on the project — upload a G703 at `POST /:id/draws`, walk it through the contractor approval flow, then call this. With no `drawId` the endpoint auto-picks the latest approved draw.)
-
-```bash
-curl -s "http://localhost:4000/api/projects/$PROJECT/photo-guidance"
-curl -s "http://localhost:4000/api/projects/$PROJECT/photo-guidance?drawId=$DRAW"
-```
-
-**5. Upload site evidence** (HEIC/JPEG phone captures for the demo — server transcodes on `GET /photos/:id/raw` and preserves EXIF for provenance; kicks off Agents 5 + 6 per artefact. Drone, 360° and IoT intake share the same `Observation` shape but are not wired in the hackathon build.)
-
-```bash
-curl -sX POST http://localhost:4000/api/projects/$PROJECT/photos \
-  -F 'file=@site1.heic' -F 'file=@site2.jpg'
-```
-
-**6. Generate a gap report** (Agent 7, synchronous)
-
-```bash
-curl -sX POST "http://localhost:4000/api/projects/$PROJECT/reports?milestoneId=<MILESTONE>"
-# → GapReport with { verdict: "APPROVE" | "APPROVE_WITH_CONDITIONS" | "HOLD" | "REJECT", ... }
-```
-
-**7. Watch agent progress** (any time)
-
-```bash
-curl -s http://localhost:4000/api/projects/$PROJECT/runs
-```
+The full happy path — create project → upload plans → post finance plan → get photo guidance → upload evidence → generate gap report — is documented as a 7-step `curl` walkthrough in [`backend/README.md`](backend/README.md#end-to-end-walkthrough).
 
 ## Scope (hackathon cut)
 
@@ -257,76 +210,43 @@ The premise above is the full product. The table below is the slice wired into t
 | Residential loans as the demo path; `commercial_poc` schema-ready        | Full commercial / HUD 221(d)(4) productisation                          |
 | Form-first finance-plan ingestion (AIA G702/G703 conventions)            | Excel/PDF G703 + BoQ OCR ingestion (Agent 3b, not in demo)              |
 
-## Productisation: template service
+## Roadmap
 
-The demo pipeline is LLM-first — Claude reads a plan it has never seen and returns a structured `PlanFormat`. That's the right starting point, but at scale construction lenders work with repeat counterparties: the same GC's SOV format, the same architect's titleblock, the same bank's draw schedule. For those recurring formats, template-based extraction is strictly more deterministic, cheaper per document, and doesn't regress when a prompt changes.
-
-The v2 shape is an **optional side service** offering three surfaces:
-
-- **Mapping** — bind columns, cells or regions of a sample document to `PlanFormat.elements[]` fields (`elementId`, `kind`, `identifier`, `spec`).
-- **Parsing templates** — saved and versioned per counterparty (e.g. `BigGC Inc. SOV / v3`, `Smith & Partners titleblock / v1`).
-- **Extraction rules** — regex, column ranges, keyword anchors — applied before any LLM fallback.
-
-Agent 1 is the natural routing point: a titleblock match flips the document onto the deterministic template path; no match falls through to the existing LLM extractors (Agent 2 for plans, the future Agent 3b for G703 / BOQ). Template hits preserve accuracy over time with minimal ops overhead; LLM handles the long tail.
-
-**Demo surface (frontend suggestion):** a `Use a template` toggle or a `Mock: apply BigGC SOV template` button on the upload page — signals the routing intent in the video/demo without building the template editor UI for the hackathon.
-
-## Roadmap — moving the project forward post-hackathon
-
-The hackathon slice proves the seven-agent pipeline + Supervisor end-to-end. The next phases focus on industry grounding, deterministic extraction, broader evidence modalities, and productisation.
-
-**1. Deeper industry research**
-- Field interviews with U.S. CRMCs and bank construction-loan administrators.
-- Comparative study of regional G702/G703 conventions, retainage step-down norms, and CO threshold practice across residential, commercial, and HUD 221(d)(4).
-- Mapping of common fraud patterns (overstated progress, recycled photos, scope substitution) and the audit signals that catch them.
-- OCC / FDIC / state-banking examination playbook alignment.
-
-**2. Better tools for unstructured ingest**
-- Benchmark dedicated layout-aware tooling (Adobe PDF Services, AWS Textract, PaddleOCR, Bluebeam Studio APIs, IFC.js) against the current `pdf-to-img` + Opus 4.7 vision baseline.
-- Hybrid pipelines: layout-aware OCR for tables (G703, BoQ) → LLM for semantic mapping → deterministic templates once a counterparty's format stabilises.
-- Redline / change-order reconciliation against the approved baseline.
-
-**3. Deterministic extraction via the template service**
-- Productionise the template service sketched above: when the LLM successfully parses a recurring format (a specific GC's SOV layout, an architect's titleblock, a bank's draw schedule), persist the bindings so subsequent documents of the same shape are extracted deterministically — no model call, no prompt-drift risk, lower per-document cost, audit-friendly trail.
-- Versioned templates per counterparty; LLM fallback only for unseen formats.
-
-**4. IoT and telemetry ingest**
-- Wire concrete maturity sensors, moisture probes, strain gauges, load cells, tilt/temperature sensors, and rebar corrosion probes into the existing `Observation` schema.
-- MQTT / LoRaWAN bridges with signed device attestation for chain-of-custody parity with phone EXIF.
-- Time-series joins against G703 line claims (e.g. "pour at line 03-300 must show maturity ≥ X at +72h before the next tranche releases").
-
-**5. Drone, 360° and fixed-camera capture**
-- Photogrammetry / orthomosaic ingestion with georeferenced overlays against the approved site plan.
-- 360° walkthrough indexing — bind every frame to a room or grid coordinate.
-- Fixed-position construction cameras for milestone time-lapse evidence.
-
-**6. Multi-discipline + multi-loan-type expansion**
-- Add Mechanical, Civil, Landscape, and Fire-protection as first-class lanes in `PlanClassifier` and `PlanFormatExtractor`.
-- Full CSI Masterformat spec ingestion.
-- Productisation of commercial and HUD 221(d)(4) flows beyond the residential demo path.
-
-**7. Supervisor agent evolution**
-- Cross-draw pattern detection across the full loan lifecycle (recurring overstatement, drift in retainage application, repeat low-quality evidence from a single contractor).
-- Multi-supervisor consensus for high-risk loans.
-- E-signature integration on findings; signed external memos to the contractor.
-
-**8. Platform hardening**
-- Multi-tenant deployment with role-based access (CRMC, bank reviewer, contractor, regulator read-only).
-- SOC 2 path; encrypted at rest and in transit; full audit-trail export for regulator inspection.
-- Observability — token accounting per draw, agent-run latency budgets, SLOs for the monthly draw cycle.
+Post-hackathon: deeper industry research, layout-aware OCR, a deterministic template service for recurring counterparty formats, IoT / drone / 360° capture, multi-discipline expansion, Supervisor evolution, and platform hardening (multi-tenant, SOC 2). Full plan in [`ROADMAP.md`](ROADMAP.md).
 
 ## Tech stack
 
 - **Backend**: Node 20+, TypeScript, Fastify 4, Mongoose 8, Zod, Anthropic SDK, `pdf-to-img`, `heic-convert`, `exifr`
-- **Frontend**: React 19, Vite 8, Tailwind 3, shadcn/ui, TanStack Query, Zustand, react-router, framer-motion, dnd-kit
+- **Frontend**: React 19, Vite 8, Tailwind 3, shadcn/ui patterns over Radix primitives, TanStack Query, Zustand, react-router, framer-motion, dnd-kit
 - **Database**: MongoDB 7
 - **Model**: `claude-opus-4-7` (configurable via `ANTHROPIC_MODEL`)
 - **Agent platforms**: Messages API with forced tool use for the 7-agent structured-extraction pipeline; **Claude Managed Agents (beta)** for the autonomous Supervisor
+- **Testing**: Vitest 3 on both sides; Fastify `inject()` for HTTP-layer route smokes; React Testing Library + jsdom for the frontend. No real Mongo or Anthropic API key required to run the suite.
+
+## Testing
+
+```bash
+cd backend  && npm test         # 26 tests · ~1s · no Mongo, no API key
+cd frontend && npm test         # 19 tests · ~1.5s · jsdom
+```
+
+Both repos also expose `npm run test:watch`. Tests are deliberately scoped to the financial-correctness math the draw verdict rests on, not the whole codebase. The current regression net covers:
+
+- **Backend.** `validateCrossFields` (SOV / milestone / tranche / planDocRefs cross-field math · `backend/src/routes/financePlan.ts`); `withAgentRun` (CAS to succeeded/failed, usage accumulation, cancellation race · `backend/src/agents/shared.ts`); 12 Fastify `inject()` route smokes covering projects, plans, finance-plan, draws, photos, reports, plus `/health` and Zod negative-payload checks.
+- **Frontend.** The Gantt editor store (`frontend/src/stores/ganttStore.ts`) — `defaultScaffold`, `recomputeTranches` (with user override preservation), `deriveSov`, `validate` (mirrors backend cross-field rules), and the `hydrateFromPlan` round-trip that prevents one project's milestones leaking into another's editor. Plus `relativeTime` branches.
+
+Anthropic SDK and Mongoose calls are stubbed via `vi.spyOn`; no live-agent tier is wired in this hackathon cut. See `backend/test/` and `frontend/test/` for the full layout.
+
+## Self-audit
+
+Every verifiable claim in this README was cross-checked against the code by three parallel Opus 4.7 sub-agents (pipeline · draw cycle + Supervisor · tests + tech stack). The findings — 3 factual fixes, 2 over-promises tightened, 1 clarity gap resolved — are recorded in [`docs/AUDIT.md`](docs/AUDIT.md). A judge or reviewer can re-run the same checks from the commands at the bottom of that file.
 
 ## Sub-READMEs
 
-- [`backend/README.md`](backend/README.md) — endpoint reference, env vars, agent internals
-- [`frontend/README.md`](frontend/README.md) — UI routes and dev commands
+- [`backend/README.md`](backend/README.md) — endpoint reference, env-vars, agent internals, end-to-end `curl` walkthrough, test details
+- [`frontend/README.md`](frontend/README.md) — UI routes, dev commands, test details
+- [`ROADMAP.md`](ROADMAP.md) — post-hackathon phases (industry research, template service, IoT, drone/360°, hardening)
+- [`docs/CONSTRUCTION_DRAW_PROCESS.md`](docs/CONSTRUCTION_DRAW_PROCESS.md) — business-process primer (G702/G703, draw lifecycle)
 
 ## License
 

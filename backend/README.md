@@ -15,6 +15,8 @@ ANTHROPIC_MODEL=claude-opus-4-7         # optional, defaults to claude-opus-4-7
 LOG_LEVEL=info                          # optional
 ```
 
+> **Mongo required for the live server.** The test suite stubs Mongoose and runs with no infra, but `npm run dev` needs a Mongo instance — quickest is `docker run -d -p 27017:27017 mongo:7`.
+
 ## Run
 
 ```bash
@@ -23,7 +25,24 @@ npm run dev        # tsx watch
 npm run typecheck  # tsc --noEmit
 npm run build      # tsc → dist/
 npm start          # node --import tsx src/server.ts
+npm test           # vitest run · ~1s · no Mongo, no Anthropic key
+npm run test:watch # vitest watch
 ```
+
+## Testing
+
+The suite is a **regression net**, not a coverage drive — focused on the math the draw verdict rests on. 26 tests, ~1s, zero infra (no Mongo, no Anthropic key, nothing on disk). All tests live under `test/` so they're outside `tsconfig.json`'s `rootDir: "src"` and don't ship in `dist/`.
+
+| File | What it covers |
+|---|---|
+| `test/routes/financePlan.test.ts` | `validateCrossFields` — SOV-sum tolerance, monotonic `plannedPercentOfLoan`, `Σ trancheAmount` within $1 of `loanAmount`, milestone date ordering, `planDocRefs` resolved against PLAN documents. 10 cases. |
+| `test/agents/shared.test.ts` | `withAgentRun` — CAS to `succeeded`, CAS to `failed`, usage accumulation across retries, cancellation-race semantics. 4 cases. |
+| `test/routes/smoke.test.ts` | Fastify `inject()` smokes: `POST /api/projects`, `GET /:id/plans`, `GET /:id/finance-plan` (200 + 404), `GET /:id/draws`, `GET /:id/photos`, `GET /:id/reports`, `GET /health`, ObjectId validation, plus Zod negatives (`PATCH draw line` without `confirmedMilestoneId` for `overridden`; empty `PATCH milestone` body). 12 cases. |
+| `test/helpers/{buildApp,mongoQuery}.ts` | Fastify builder + chainable Mongoose query mock used by the route smokes. |
+
+**Mocking strategy.** Mongoose model statics are stubbed via `vi.spyOn(Project, "find").mockReturnValue(mongoQuery(value))` per test — no `mongodb-memory-server`, no real connection. The Anthropic SDK is module-singletoned in `src/lib/claudeCall.ts` and only instantiated on the first agent call; nothing in the suite hits a path that triggers it. No live-agent tier is wired in this hackathon cut.
+
+**Why `validateCrossFields` is exported.** A one-keyword `export` was added in `src/routes/financePlan.ts` so the function can be unit-tested directly. Zero runtime impact; route handler still calls it the same way.
 
 ## Endpoints
 
@@ -141,6 +160,71 @@ Built-in toolset (`agent_toolset_20260401`) is enabled with defaults — `bash`,
 
 **Smoke test.** `backend/scripts/smokeSupervisor.ts` verifies the full transport — bootstrap → session create → user message → stream to idle — without requiring a real project. Run with `ANTHROPIC_API_KEY=sk-... npx tsx backend/scripts/smokeSupervisor.ts`.
 
+## End-to-end walkthrough
+
+The full happy path, driven by `curl` against a local backend on `:4000`. Replace `$PROJECT` with the id returned from step 1.
+
+**1. Create a project**
+
+```bash
+curl -sX POST http://localhost:4000/api/projects \
+  -H 'content-type: application/json' \
+  -d '{"name":"101 Main","address":"101 Main St"}'
+# → { "_id": "<PROJECT>", ... }
+```
+
+**2. Upload approved construction drawings** — multipart, multiple files ok; kicks off Agents 1 + 2. The demo accepts sealed PDF drawings; the production intake is designed for BoQ / G703 / CSI-spec structured documents alongside unstructured PDFs.
+
+```bash
+curl -sX POST http://localhost:4000/api/projects/$PROJECT/plans \
+  -F 'file=@architectural.pdf' \
+  -F 'file=@structural.pdf'
+# → { "documents": [...], "pendingAgents": ["PlanClassifier","PlanFormatExtractor"],
+#     "pipelineKickedOff": true }
+
+curl -s http://localhost:4000/api/projects/$PROJECT/plan-classification    # poll until present
+curl -s http://localhost:4000/api/projects/$PROJECT/plan-format?discipline=ARCHITECTURE
+```
+
+**3. Post the finance plan** — form-first, AIA G702/G703 shape. Zod cross-field validation: SOV sum vs `totalBudget`, tranche sum vs `loanAmount`, monotonic milestone `plannedReleasePct` ending at 100, retainage step-down consistency, CO threshold sanity.
+
+```bash
+# design/sample_finance_plan.json has PLAN_DOC_PLACEHOLDER refs — strip or swap
+# them for real documentIds returned in step 2 before POSTing.
+jq '.milestones[].planDocRefs=[]' design/sample_finance_plan.json \
+  | curl -sX POST http://localhost:4000/api/projects/$PROJECT/finance-plan \
+      -H 'content-type: application/json' --data-binary @-
+```
+
+Supported `loanType`: `residential`, `commercial_poc`, `hud_221d4`, `hybrid`. `milestones[].status` progresses `pending → in_progress → claimed → verified | rejected`.
+
+**4. Get photo guidance for the approved draw** — Agent 4, cached per draw; pass `regenerate=1` to force a re-run. Requires an approved `Draw` on the project; with no `drawId` the endpoint auto-picks the latest approved draw.
+
+```bash
+curl -s "http://localhost:4000/api/projects/$PROJECT/photo-guidance"
+curl -s "http://localhost:4000/api/projects/$PROJECT/photo-guidance?drawId=$DRAW"
+```
+
+**5. Upload site evidence** — HEIC/JPEG phone captures for the demo. Server transcodes on `GET /photos/:id/raw` and preserves EXIF for provenance; kicks off Agents 5 + 6 per artefact. Drone, 360° and IoT intake share the same `Observation` shape but are not wired in the hackathon build.
+
+```bash
+curl -sX POST http://localhost:4000/api/projects/$PROJECT/photos \
+  -F 'file=@site1.heic' -F 'file=@site2.jpg'
+```
+
+**6. Generate a gap report** (Agent 7, synchronous)
+
+```bash
+curl -sX POST "http://localhost:4000/api/projects/$PROJECT/reports?milestoneId=<MILESTONE>"
+# → GapReport with { verdict: "APPROVE" | "APPROVE_WITH_CONDITIONS" | "HOLD" | "REJECT", ... }
+```
+
+**7. Watch agent progress** (any time)
+
+```bash
+curl -s http://localhost:4000/api/projects/$PROJECT/runs
+```
+
 ## Source layout
 
 ```
@@ -172,3 +256,13 @@ A `GapReport` is the verdict surface for a draw. Schema-wise it carries an optio
 ### Agent: G703Extractor
 
 Parses an uploaded G703 PDF and, in the same Claude call, suggests which project milestone each row belongs to. Loads the project's master `FinancePlan.sov` + `FinancePlan.milestones` and injects both into the system prompt — the agent never guesses a milestone id that isn't on the project. Output is validated against a Zod array with `aiConfidence: 0–1` on every row so the contractor UI can surface low-confidence rows for explicit override. Model: `config.anthropicModel`.
+
+### Agent: PlanFormatExtractor (Agent 2)
+
+Reads the discipline-tagged sheets from `PlanClassification` (Agent 1's output), renders the relevant PDF pages, and calls Claude once per discipline (`ARCHITECTURE`, `STRUCTURAL`, `ELECTRICAL`, `PLUMBING`) with a forced `extract_plan_format` tool call. Writes one `PlanFormat` row per discipline. Output schema (`src/agents/planFormatExtractor.ts:22-36`): `elements[]` (each `{elementId, kind, identifier, spec, location, drawingRef}`), `inspectorChecklist[]`, `scaleNotes`, `sourceSheets`. Model: `config.anthropicModel`; versioned `model_version: plan-format-extractor/v1`.
+
+**This is the load-bearing agent for the gap report.** Three downstream agents read `PlanFormat` directly and cannot run without it:
+
+- **Agent 4 — `PhotoGuidance`** (`src/agents/photoGuidance.ts:251`): pulls the per-discipline `PlanFormat` to build the inspector's shot list, so every shot back-links to a real plan element.
+- **Agent 6 — `PhotoToPlanFormat`** (`src/agents/photoToPlanFormat.ts:74`): matches each uploaded photo's observed content to a specific `elementId` from the approved plan.
+- **Agent 7 — `ComparisonAndGap`** (`src/agents/comparisonAndGap.ts:376-384`): embeds the approved-element list directly into the gap-report system prompt and filters Agent 6's observations against it. Throws `"no PlanFormat rows for project"` (line 385) if Agent 2 hasn't run — the per-line `$` verdict + photo-evidence report literally cannot be produced without `PlanFormat`.

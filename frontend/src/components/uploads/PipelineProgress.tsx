@@ -92,7 +92,7 @@ function NextStepBanner({
         className="pointer-events-none absolute -top-20 -right-12 h-64 w-3/5"
         style={{
           background:
-            "radial-gradient(ellipse at center, rgba(255,107,26,0.08), transparent 65%)",
+            "radial-gradient(ellipse at center, rgba(34,211,238,0.08), transparent 65%)",
         }}
       />
       <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
@@ -117,7 +117,7 @@ function NextStepBanner({
         </div>
         <Link
           to={`/projects/${projectId}/gantt`}
-          className="inline-flex shrink-0 items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#ff8940] hover:shadow-[0_0_0_3px_rgba(255,107,26,0.18)]"
+          className="inline-flex shrink-0 items-center gap-2.5 bg-accent px-6 py-3.5 font-mono text-[11px] font-semibold uppercase tracking-[0.16em] text-black transition-all hover:bg-[#67e8f9] hover:shadow-[0_0_0_3px_rgba(34,211,238,0.18)]"
         >
           Open Gantt builder <span aria-hidden>↗</span>
         </Link>
